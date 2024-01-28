@@ -134,7 +134,7 @@ func checkLevel(w Level, service string) error {
 	case Debug, Info, Warn, Error, Fatal, Panic:
 		return nil
 	default:
-		return fmt.Errorf("invalid %s log level input", service)
+		return fmt.Errorf("invalid %s log level input '%v'", service, w)
 	}
 }
 
@@ -143,7 +143,7 @@ func checkFormat(w Format, service string) error {
 	case JSON, Plain:
 		return nil
 	default:
-		return fmt.Errorf("invalid %s log format input", service)
+		return fmt.Errorf("invalid %s log format input '%v'", service, w)
 	}
 }
 

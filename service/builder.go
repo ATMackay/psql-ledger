@@ -1,6 +1,8 @@
 package service
 
 import (
+	"fmt"
+
 	"github.com/ATMackay/psql-ledger/database"
 	"github.com/sirupsen/logrus"
 )
@@ -11,7 +13,7 @@ func BuildService(cfg Config) (*Service, error) {
 
 	config, defaultUsed := sanitizeConfig(cfg)
 
-	l, err := NewLogger(Level(config.LogFormat), Format(config.LogFormat), config.LogToFile, serviceName)
+	l, err := NewLogger(Level(config.LogLevel), Format(config.LogFormat), config.LogToFile, serviceName)
 	if err != nil {
 		return nil, err
 	}
@@ -20,7 +22,8 @@ func BuildService(cfg Config) (*Service, error) {
 		l.Infof("no config parameters supplied: using default")
 	}
 
-	db, err := database.NewPSQLClient("")
+	connString := fmt.Sprintf("user=%v password=%v dbname=%v sslmode=disable", config.PostgresUser, config.PostgresPassword, config.PostgresDB)
+	db, err := database.NewPSQLClient(connString)
 	if err != nil {
 		return nil, err
 	}
@@ -33,7 +36,7 @@ func New(port int, l *logrus.Entry, db database.DB) *Service {
 		logger: l,
 		db:     db,
 	}
-	server := NewHTTPService(8080, makeServiceAPIs(s), l)
+	server := NewHTTPService(port, makeServiceAPIs(s), l)
 	s.server = server
 	return s
 }
@@ -41,8 +44,8 @@ func New(port int, l *logrus.Entry, db database.DB) *Service {
 func makeServiceAPIs(s *Service) *API {
 	return MakeAPI([]EndPoint{
 		EndPoint{
-			Path:       "/tx",
-			Handler:    s.Tx,
+			Path:       "/create-tx",
+			Handler:    s.CreateTx,
 			MethodType: "POST",
 		},
 		EndPoint{

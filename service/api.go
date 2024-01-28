@@ -54,7 +54,7 @@ func (s *Service) CreateAccount(w http.ResponseWriter, r *http.Request) {
 
 }
 
-type TxParams struct {
+type CreateTxParams struct {
 	FromAccount int64 `json:"from_account"`
 	ToAccount   int64 `json:"to_account"`
 	Amount      int64 `json:"amount"`
@@ -63,8 +63,8 @@ type TxParams struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-func (s *Service) Tx(w http.ResponseWriter, r *http.Request) {
-	var txParams TxParams
+func (s *Service) CreateTx(w http.ResponseWriter, r *http.Request) {
+	var txParams CreateTxParams
 	if err := DecodeJSON(r.Body, &txParams); err != nil {
 		RespondWithError(w, http.StatusBadRequest, err)
 		return
@@ -88,7 +88,7 @@ func (s *Service) Tx(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := RespondWithJSON(w, http.StatusOK, &TxParams{ID: tx.ID, CreatedAt: tx.CreatedAt.Time, FromAccount: tx.FromAccount.Int64, ToAccount: tx.ToAccount.Int64}); err != nil {
+	if err := RespondWithJSON(w, http.StatusOK, &CreateTxParams{ID: tx.ID, CreatedAt: tx.CreatedAt.Time, FromAccount: tx.FromAccount.Int64, ToAccount: tx.ToAccount.Int64}); err != nil {
 		s.logger.Error(err)
 	}
 }

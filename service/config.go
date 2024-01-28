@@ -22,8 +22,8 @@ var emptyConfig = Config{}
 
 var defaultConfig = Config{
 	Port:             8080,
-	LogLevel:         "info",
-	LogFormat:        "plain",
+	LogLevel:         string(Info),
+	LogFormat:        string(Plain),
 	LogToFile:        false,
 	PostgresHost:     "localhost",
 	PostgresPort:     5432,
@@ -58,11 +58,11 @@ func sanitizeConfig(config Config) (cfg Config, defaultUsed bool) {
 	}
 
 	if config.LogFormat == "" {
-		cfg.LogFormat = defaultConfig.LogLevel
+		cfg.LogFormat = defaultConfig.LogFormat
 	}
 
 	if config.PostgresHost == "" {
-		cfg.PostgresHost = defaultConfig.LogLevel
+		cfg.PostgresHost = defaultConfig.PostgresHost
 	}
 
 	if config.PostgresPort == 0 {

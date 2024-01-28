@@ -40,13 +40,13 @@ func init() {
 func main() {
 	var cfg service.Config
 
-	if err := config.ParseYAMLConfig(configFilePath, cfg, envPrefix); err != nil {
+	if err := config.ParseYAMLConfig(configFilePath, &cfg, envPrefix); err != nil {
 		panic(fmt.Sprintf("error parsing config: %v", err))
 	}
 
 	psqlLedger, err := service.BuildService(cfg)
 	if err != nil {
-		panic(err)
+		panic(fmt.Sprintf("error building service: %v", err))
 	}
 
 	psqlLedger.Start()
