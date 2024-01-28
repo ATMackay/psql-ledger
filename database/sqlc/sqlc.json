@@ -1,0 +1,13 @@
+{
+  "version": "2",
+  "sql": [{
+    "schema": "./migrations/",
+    "queries": "queries.sql",
+    "engine": "postgresql",
+    "gen": {
+      "go": {
+        "out": "db"
+      }
+    }
+  }]
+}

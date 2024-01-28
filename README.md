@@ -1,0 +1,1 @@
+# A simple ledger implemented in Go and PostgreSQL
