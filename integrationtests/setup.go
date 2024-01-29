@@ -71,7 +71,8 @@ func createStack(t *testing.T) *stack {
 		t.Fatal(err)
 	}
 	cfg := service.DefaultConfig
-	// input config details
+
+	// get config details
 	cfg.PostgresHost = psqlContainer.host
 	cfg.PostgresPort = psqlContainer.port
 	cfg.PostgresUser = postgresUsr
@@ -95,6 +96,7 @@ func createStack(t *testing.T) *stack {
 		}
 	})
 
+	// Start HTTP service
 	psqlLedger.Start()
 
 	return &stack{psql: psqlContainer, psqlLedger: psqlLedger}

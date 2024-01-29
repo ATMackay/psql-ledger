@@ -115,7 +115,7 @@ func logHTTPRequest(entry *logrus.Entry) func(http.Handler) http.Handler {
 			if httpCode > 399 {
 				entry.Level = logrus.WarnLevel
 			}
-			entry.Debug()
+			entry.Print()
 		})
 	}
 }

@@ -2,7 +2,6 @@ package integrationtests
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -11,20 +10,7 @@ import (
 	"github.com/ATMackay/psql-ledger/service"
 )
 
-func Test_PSQLContainer(t *testing.T) {
-	ctx := context.Background()
-	psqlContainer, err := startPSQLContainer(ctx)
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		if err := psqlContainer.Terminate(ctx); err != nil {
-			t.Fatalf("failed to terminate container: %s", err)
-		}
-	})
-}
-
-func Test_Stack(t *testing.T) {
+func Test_StackAPI(t *testing.T) {
 
 	stack := createStack(t)
 
