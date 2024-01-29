@@ -37,3 +37,23 @@ INSERT INTO transactions (
 	$1, $2, $3
 )
 RETURNING *;
+
+-- name: GetUserTransactions :many
+SELECT
+    t.id AS transaction_id,
+    t.from_account AS from_account_id,
+    from_acc.username AS from_username,
+    t.to_account AS to_account_id,
+    to_acc.username AS to_username,
+    t.amount,
+    t.created_at AS transaction_created_at
+FROM
+    transactions t
+JOIN
+    accounts from_acc ON t.from_account = from_acc.id
+JOIN
+    accounts to_acc ON t.to_account = to_acc.id
+WHERE
+    from_acc.username = 'desired_username' OR to_acc.username = 'desired_username'
+ORDER BY
+    t.created_at DESC;

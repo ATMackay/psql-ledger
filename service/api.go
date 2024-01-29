@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"net/http"
+	"regexp"
 	"time"
 
 	"github.com/ATMackay/psql-ledger/database"
@@ -13,6 +14,10 @@ import (
 const (
 	Status = "/status"
 	Health = "/health"
+
+	GetAccount           = "/account-by-index"
+	GetAccountByEmail    = "/account-by-email"
+	GetAccountByUsername = "/account-by-username"
 
 	CreateTx      = "/create-tx"
 	CreateAccount = "/create-account"
@@ -23,22 +28,37 @@ func makeServiceAPIs(s *Service) *API {
 		EndPoint{
 			Path:       Status,
 			Handler:    s.Status,
-			MethodType: "GET",
+			MethodType: http.MethodGet,
 		},
 		EndPoint{
 			Path:       Health,
-			Handler:    s.Status,
-			MethodType: "GET",
+			Handler:    s.Health,
+			MethodType: http.MethodGet,
+		},
+		EndPoint{
+			Path:       GetAccount,
+			Handler:    s.AccountByIndex,
+			MethodType: http.MethodGet,
+		},
+		EndPoint{
+			Path:       GetAccountByEmail,
+			Handler:    s.AccountByEmail,
+			MethodType: http.MethodGet,
+		},
+		EndPoint{
+			Path:       GetAccountByUsername,
+			Handler:    s.AccountByUsername,
+			MethodType: http.MethodGet,
 		},
 		EndPoint{
 			Path:       CreateTx,
 			Handler:    s.CreateTx,
-			MethodType: "POST",
+			MethodType: http.MethodPost,
 		},
 		EndPoint{
 			Path:       CreateAccount,
 			Handler:    s.CreateAccount,
-			MethodType: "POST",
+			MethodType: http.MethodPost,
 		},
 	})
 }
@@ -70,41 +90,159 @@ func (s *Service) Health(w http.ResponseWriter, r *http.Request) {
 		Version: FullVersion,
 	}
 	var failures = []string{}
-
+	var httpCode = http.StatusOK
 	if err := s.db.Ping(); err != nil {
 		failures = append(failures, fmt.Sprintf("DB: %v", err))
+		httpCode = http.StatusServiceUnavailable
 	}
 
 	health.Failures = failures
 
-	if err := RespondWithJSON(w, http.StatusOK, health); err != nil {
+	if err := RespondWithJSON(w, httpCode, health); err != nil {
 		s.logger.Error(err)
 	}
 }
 
-// Read Requests
-
-func (s *Service) User(w http.ResponseWriter, r *http.Request) {
-	// TODO
-}
-
-func (s *Service) TxHistory(w http.ResponseWriter, r *http.Request) {
-	// TODO
-}
-
-// Write Requests
-
-type CreateAccountParams struct {
+type AccountParams struct {
 	Username string `json:"username"`
 	Email    string `json:"email"`
+	Balance  int64  `json:"balance"`
 
 	ID        int64     `json:"id"`
 	CreatedAt time.Time `json:"created_at"`
 }
 
-func (s *Service) CreateAccount(w http.ResponseWriter, r *http.Request) {
-	var c CreateAccountParams
+const (
+	// This regex defines the regular expression for simple email formats
+	//
+	// e.g. alex@emailprovider.com -VALID
+	//
+	//      dhd$@xyz.com - INVALID
+	//
+	emailRegex = `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
+	// This regex defines the regular expression for simple email formats
+	//
+	// e.g. user105 - VALID
+	//
+	usernameRegex = "^[a-zA-Z0-9]+$"
+)
+
+func validAccountParams(c AccountParams) error {
+	// validate email input
+	if c.Email != "" {
+		if err := isValidString(c.Email, emailRegex); err != nil {
+			return fmt.Errorf("invalid user email: %v", err)
+		}
+	}
+	if c.Username != "" {
+		if err := isValidString(c.Username, usernameRegex); err != nil {
+			return fmt.Errorf("invalid user email: %v", err)
+		}
+	}
+	return nil
+}
+
+func isValidString(input string, regex string) error {
+	re, err := regexp.Compile(regex)
+	if err != nil {
+		return err
+	}
+
+	if !re.MatchString(input) {
+		return fmt.Errorf(" '%v' failed to match expression '%v'", input, regex)
+	}
+
+	return nil
+}
+
+// Read Requests
+
+// AccountByIndex requests the account for supplied ID number
+func (s *Service) AccountByIndex(w http.ResponseWriter, r *http.Request) {
+	var c AccountParams
 	if err := DecodeJSON(r.Body, &c); err != nil {
+		RespondWithError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	if c.ID == 0 {
+		RespondWithError(w, http.StatusBadRequest, fmt.Errorf("cannot supply account ID = 0"))
+		return
+	}
+
+	// Execute Query against PSQL
+	acc, err := s.db.QueryClient().GetUser(context.Background(), c.ID)
+	if err != nil {
+		RespondWithError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	if err := RespondWithJSON(w, http.StatusOK, &AccountParams{ID: acc.ID, Username: acc.Username, Email: acc.Email.String, CreatedAt: acc.CreatedAt.Time}); err != nil {
+		s.logger.Error(err)
+	}
+}
+
+// AccountByUsername requests the account for supplied ID number
+func (s *Service) AccountByUsername(w http.ResponseWriter, r *http.Request) {
+	var c AccountParams
+	if err := DecodeJSON(r.Body, &c); err != nil {
+		RespondWithError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	// validate inputs
+	if err := validAccountParams(c); err != nil {
+		RespondWithError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	// Execute Query against PSQL
+	acc, err := s.db.QueryClient().GetUserByUsername(context.Background(), c.Username)
+	if err != nil {
+		RespondWithError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	if err := RespondWithJSON(w, http.StatusOK, &AccountParams{ID: acc.ID, Username: acc.Username, Email: acc.Email.String, CreatedAt: acc.CreatedAt.Time}); err != nil {
+		s.logger.Error(err)
+	}
+}
+
+// AccountByUsername requests the account for supplied ID number
+func (s *Service) AccountByEmail(w http.ResponseWriter, r *http.Request) {
+	var c AccountParams
+	if err := DecodeJSON(r.Body, &c); err != nil {
+		RespondWithError(w, http.StatusBadRequest, err)
+		return
+	}
+	// validate inputs
+	if err := validAccountParams(c); err != nil {
+		RespondWithError(w, http.StatusBadRequest, err)
+		return
+	}
+	// Execute Query against PSQL
+	acc, err := s.db.QueryClient().GetUserByEmail(context.Background(), sql.NullString{String: c.Email})
+	if err != nil {
+		RespondWithError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	if err := RespondWithJSON(w, http.StatusOK, &AccountParams{ID: acc.ID, Username: acc.Username, Email: acc.Email.String, CreatedAt: acc.CreatedAt.Time}); err != nil {
+		s.logger.Error(err)
+	}
+}
+
+// Write Requests
+
+func (s *Service) CreateAccount(w http.ResponseWriter, r *http.Request) {
+	var c AccountParams
+	if err := DecodeJSON(r.Body, &c); err != nil {
+		RespondWithError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	// validate inputs
+	if err := validAccountParams(c); err != nil {
 		RespondWithError(w, http.StatusBadRequest, err)
 		return
 	}
@@ -120,13 +258,13 @@ func (s *Service) CreateAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := RespondWithJSON(w, http.StatusOK, &CreateAccountParams{ID: acc.ID, Username: acc.Username, Email: acc.Email.String, CreatedAt: acc.CreatedAt.Time}); err != nil {
+	if err := RespondWithJSON(w, http.StatusOK, &AccountParams{ID: acc.ID, Username: acc.Username, Email: acc.Email.String, CreatedAt: acc.CreatedAt.Time}); err != nil {
 		s.logger.Error(err)
 	}
 
 }
 
-type CreateTxParams struct {
+type TxParams struct {
 	FromAccount int64 `json:"from_account"`
 	ToAccount   int64 `json:"to_account"`
 	Amount      int64 `json:"amount"`
@@ -135,8 +273,16 @@ type CreateTxParams struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+// Read Requests
+
+func (s *Service) TxHistory(w http.ResponseWriter, r *http.Request) {
+	// TODO
+}
+
+// Write Requests
+
 func (s *Service) CreateTx(w http.ResponseWriter, r *http.Request) {
-	var txParams CreateTxParams
+	var txParams TxParams
 	if err := DecodeJSON(r.Body, &txParams); err != nil {
 		RespondWithError(w, http.StatusBadRequest, err)
 		return
@@ -160,7 +306,7 @@ func (s *Service) CreateTx(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := RespondWithJSON(w, http.StatusOK, &CreateTxParams{ID: tx.ID, CreatedAt: tx.CreatedAt.Time, FromAccount: tx.FromAccount.Int64, ToAccount: tx.ToAccount.Int64}); err != nil {
+	if err := RespondWithJSON(w, http.StatusOK, &TxParams{ID: tx.ID, CreatedAt: tx.CreatedAt.Time, FromAccount: tx.FromAccount.Int64, ToAccount: tx.ToAccount.Int64}); err != nil {
 		s.logger.Error(err)
 	}
 }

@@ -1,8 +1,11 @@
 # Alex Mackay 2024
 
 build:
-	GO111MODULE='auto' go build ./cmd/psqlledger
+	GO111MODULE=on go build -ldflags "-w -linkmode external -extldflags '-static' -X 'github.com/ATMackay/psql-ledger/service.buildDate=$(shell date +"%Y-%m-%d %H:%M:%S")' -X 'github.com/ATMackay/psql-ledger/service.gitCommit=$(shell git rev-parse --short HEAD)'" ./cmd/psqlledger
 	mv psqlledger ./build
+
+run: build
+	./build/psqlledger
 
 # Must have Docker installed on the host machine
 
@@ -22,14 +25,15 @@ createdb:
 dropdb: 
 	docker exec -it postgres dropdb --username=root bank
 
+# Requires migrate installation: https://github.com/golang-migrate/migrate/tree/master/cmd/migrate
 migrateup:
-	migrate --path database/sqlc/migration --databse "postgresql://root:secret@localhost:5432/bank?sslmode=disable" --verbose up
+	migrate -path database/sqlc/migrations -database "postgresql://root:secret@localhost:5432/bank?sslmode=disable" -verbose up
 
 migratedown:
-	migrate --path database/sqlc/migration --databse "postgresql://root:secret@localhost:5432/bank?sslmode=disable" --verbose down
+	migrate -path database/sqlc/migrations -database "postgresql://root:secret@localhost:5432/bank?sslmode=disable" -verbose down
 
 # Requires sqlc installation: https://docs.sqlc.dev/en/stable/overview/install.html
 sqlc: 
 	cd database/sqlc && sqlc generate && mv ./db/* ..
 
-.PHONY: build docker postgres createdb dropdb migrateup migratedown sqlc
+.PHONY: build docker postgres createdb dropdb migrateup migratedown sqlc run

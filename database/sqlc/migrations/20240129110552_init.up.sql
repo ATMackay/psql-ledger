@@ -16,10 +16,10 @@ CREATE TABLE "transactions" (
 
 CREATE INDEX ON "accounts" ("username");
 
-CREATE INDEX ON "transactions" ("from");
+CREATE INDEX ON "transactions" ("from_account");
 
-CREATE INDEX ON "transactions" ("to");
+CREATE INDEX ON "transactions" ("to_account");
 
-ALTER TABLE "transactions" ADD FOREIGN KEY ("from") REFERENCES "accounts" ("id");
+ALTER TABLE "transactions" ADD FOREIGN KEY ("from_account") REFERENCES "accounts" ("id");
 
-ALTER TABLE "transactions" ADD FOREIGN KEY ("to") REFERENCES "accounts" ("id");
+ALTER TABLE "transactions" ADD FOREIGN KEY ("to_account") REFERENCES "accounts" ("id");

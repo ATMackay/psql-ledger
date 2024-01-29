@@ -22,13 +22,27 @@ func BuildService(cfg Config) (*Service, error) {
 		l.Warnf("no config parameters supplied: using default")
 	}
 
-	connString := fmt.Sprintf("host=%v port=%v user=%v password=%v dbname=%v sslmode=disable", config.PostgresHost, config.PostgresPort, config.PostgresUser, config.PostgresPassword, config.PostgresDB)
+	connString := fmt.Sprintf("host=%v port=%v user=%v password=%v dbname=%v sslmode=disable",
+		config.PostgresHost,
+		config.PostgresPort,
+		config.PostgresUser,
+		config.PostgresPassword,
+		config.PostgresDB)
+
 	db, err := database.NewPSQLClient(connString)
 	if err != nil {
 		return nil, err
 	}
+	l.WithFields(logrus.Fields{
+		"port":     config.Port,
+		"loglevel": config.LogLevel,
+		"DBHost":   config.PostgresHost,
+		"DBPort":   config.PostgresPort,
+		"DBUser":   config.PostgresUser,
+		"DBName":   config.PostgresDB,
+	}).Info("creating psqlledger")
 
-	return New(cfg.Port, l, db), nil
+	return New(config.Port, l, db), nil
 }
 
 func New(port int, l *logrus.Entry, db database.DB) *Service {

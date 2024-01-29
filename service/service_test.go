@@ -41,7 +41,7 @@ func Test_ServiceStartStop(t *testing.T) {
 	service.Stop(os.Kill)
 }
 
-func Test_API(t *testing.T) {
+func Test_APIGet(t *testing.T) {
 	n := "test"
 	log, err := NewLogger("fatal", "plain", false, n)
 	if err != nil {

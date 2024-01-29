@@ -25,11 +25,11 @@ var DefaultConfig = Config{
 	LogLevel:         string(Info),
 	LogFormat:        string(Plain),
 	LogToFile:        false,
-	PostgresHost:     "localhost",
-	PostgresPort:     5432,
-	PostgresUser:     "root",
-	PostgresPassword: "secret", // will be generated if no supplied by the user
-	PostgresDB:       "bank",   // must be user supplied
+	PostgresHost:     "localhost", // Default Postgres database configuration
+	PostgresPort:     5432,        //
+	PostgresUser:     "root",      //
+	PostgresPassword: "secret",    //
+	PostgresDB:       "bank",      //
 
 }
 

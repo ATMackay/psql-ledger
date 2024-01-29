@@ -20,7 +20,7 @@ RETURNING id, username, balance, email, created_at
 `
 
 type CreateAccountParams struct {
-	Username string 
+	Username string
 	Balance  int64
 	Email    sql.NullString
 }
@@ -146,6 +146,68 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (Accou
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const getUserTransactions = `-- name: GetUserTransactions :many
+SELECT
+    t.id AS transaction_id,
+    t.from_account AS from_account_id,
+    from_acc.username AS from_username,
+    t.to_account AS to_account_id,
+    to_acc.username AS to_username,
+    t.amount,
+    t.created_at AS transaction_created_at
+FROM
+    transactions t
+JOIN
+    accounts from_acc ON t.from_account = from_acc.id
+JOIN
+    accounts to_acc ON t.to_account = to_acc.id
+WHERE
+    from_acc.username = 'desired_username' OR to_acc.username = 'desired_username'
+ORDER BY
+    t.created_at DESC
+`
+
+type GetUserTransactionsRow struct {
+	TransactionID        int64
+	FromAccountID        sql.NullInt64
+	FromUsername         string
+	ToAccountID          sql.NullInt64
+	ToUsername           string
+	Amount               sql.NullInt64
+	TransactionCreatedAt sql.NullTime
+}
+
+func (q *Queries) GetUserTransactions(ctx context.Context) ([]GetUserTransactionsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getUserTransactions)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetUserTransactionsRow
+	for rows.Next() {
+		var i GetUserTransactionsRow
+		if err := rows.Scan(
+			&i.TransactionID,
+			&i.FromAccountID,
+			&i.FromUsername,
+			&i.ToAccountID,
+			&i.ToUsername,
+			&i.Amount,
+			&i.TransactionCreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getUsers = `-- name: GetUsers :many
