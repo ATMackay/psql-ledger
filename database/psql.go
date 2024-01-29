@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 
 	"github.com/lib/pq"
@@ -9,10 +10,8 @@ import (
 var _ DB = (*PSQLClient)(nil)
 
 type PSQLClient struct {
-	name        string
-	db          *sql.DB
-	queryClient DBQuery // wrapper for read/write queries to PSQL
-	//connector *pq.Connector
+	name string
+	db   *sql.DB
 }
 
 func NewPSQLClient(connString string) (*PSQLClient, error) {
@@ -27,7 +26,7 @@ func NewPSQLClient(connString string) (*PSQLClient, error) {
 	if err := db.Ping(); err != nil {
 		return nil, err
 	}
-	return &PSQLClient{name: connString, db: db, queryClient: New(db)}, nil
+	return &PSQLClient{name: connString, db: db}, nil
 }
 
 func (p *PSQLClient) Ping() error {
@@ -38,6 +37,18 @@ func (p *PSQLClient) Close() error {
 	return p.db.Close()
 }
 
-func (p *PSQLClient) QueryClient() DBQuery {
-	return p.queryClient
+func (p *PSQLClient) NewQuery() DBQuery {
+	return New(p.db)
+}
+
+func (p *PSQLClient) NewTransaction() (DBQuery, error) {
+	conn, err := p.db.Conn(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	sqlTx, err := conn.BeginTx(context.Background(), &sql.TxOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return New(sqlTx), nil
 }

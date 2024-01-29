@@ -25,8 +25,12 @@ func (m MemoryDB) Close() error {
 	return nil
 }
 
-func (m MemoryDB) QueryClient() DBQuery {
+func (m MemoryDB) NewQuery() DBQuery {
 	return m.client
+}
+
+func (m MemoryDB) NewTransaction() (DBQuery, error) {
+	return m.client, nil
 }
 
 type FakeClient struct{}
@@ -61,6 +65,10 @@ func (f FakeClient) GetUserByUsername(ctx context.Context, username string) (Acc
 
 func (f FakeClient) GetUsers(ctx context.Context) ([]Account, error) {
 	return []Account{}, nil
+}
+
+func (f FakeClient) GetUserTransactions(ctx context.Context) ([]GetUserTransactionsRow, error) {
+	return []GetUserTransactionsRow{}, nil
 }
 
 func (f FakeClient) WithTx(tx *sql.Tx) DBQuery {

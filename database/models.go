@@ -9,17 +9,17 @@ import (
 )
 
 type Account struct {
-	ID        int64 
-	Username  string 
-	Balance   int64 
-	Email     sql.NullString
-	CreatedAt sql.NullTime
+	ID        int64          `json:"id"`
+	Username  string         `json:"username"`
+	Balance   int64          `json:"balance"`
+	Email     sql.NullString `json:"email"`
+	CreatedAt sql.NullTime   `json:"created_at"`
 }
 
 type Transaction struct {
-	ID          int64
-	FromAccount sql.NullInt64
-	ToAccount   sql.NullInt64
-	Amount      sql.NullInt64
-	CreatedAt   sql.NullTime
+	ID          int64         `json:"id"`
+	FromAccount sql.NullInt64 `json:"from_account"`
+	ToAccount   sql.NullInt64 `json:"to_account"`
+	Amount      sql.NullInt64 `json:"amount"`
+	CreatedAt   sql.NullTime  `json:"created_at"`
 }

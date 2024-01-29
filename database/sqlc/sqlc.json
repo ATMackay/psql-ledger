@@ -6,7 +6,8 @@
     "engine": "postgresql",
     "gen": {
       "go": {
-        "out": "db"
+        "out": "db",
+        "emit_json_tags": true
       }
     }
   }]

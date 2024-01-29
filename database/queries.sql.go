@@ -20,9 +20,9 @@ RETURNING id, username, balance, email, created_at
 `
 
 type CreateAccountParams struct {
-	Username string
-	Balance  int64
-	Email    sql.NullString
+	Username string         `json:"username"`
+	Balance  int64          `json:"balance"`
+	Email    sql.NullString `json:"email"`
 }
 
 func (q *Queries) CreateAccount(ctx context.Context, arg CreateAccountParams) (Account, error) {
@@ -48,9 +48,9 @@ RETURNING id, from_account, to_account, amount, created_at
 `
 
 type CreateTransactionParams struct {
-	FromAccount sql.NullInt64
-	ToAccount   sql.NullInt64
-	Amount      sql.NullInt64
+	FromAccount sql.NullInt64 `json:"from_account"`
+	ToAccount   sql.NullInt64 `json:"to_account"`
+	Amount      sql.NullInt64 `json:"amount"`
 }
 
 func (q *Queries) CreateTransaction(ctx context.Context, arg CreateTransactionParams) (Transaction, error) {
@@ -170,13 +170,13 @@ ORDER BY
 `
 
 type GetUserTransactionsRow struct {
-	TransactionID        int64
-	FromAccountID        sql.NullInt64
-	FromUsername         string
-	ToAccountID          sql.NullInt64
-	ToUsername           string
-	Amount               sql.NullInt64
-	TransactionCreatedAt sql.NullTime
+	TransactionID        int64         `json:"transaction_id"`
+	FromAccountID        sql.NullInt64 `json:"from_account_id"`
+	FromUsername         string        `json:"from_username"`
+	ToAccountID          sql.NullInt64 `json:"to_account_id"`
+	ToUsername           string        `json:"to_username"`
+	Amount               sql.NullInt64 `json:"amount"`
+	TransactionCreatedAt sql.NullTime  `json:"transaction_created_at"`
 }
 
 func (q *Queries) GetUserTransactions(ctx context.Context) ([]GetUserTransactionsRow, error) {

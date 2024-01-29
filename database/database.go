@@ -8,7 +8,8 @@ import (
 type DB interface {
 	Close() error
 	Ping() error
-	QueryClient() DBQuery
+	NewQuery() DBQuery
+	NewTransaction() (DBQuery, error)
 }
 
 type DBQuery interface {
@@ -20,5 +21,6 @@ type DBQuery interface {
 	GetUserByEmail(ctx context.Context, email sql.NullString) (Account, error)
 	GetUserByUsername(ctx context.Context, username string) (Account, error)
 	GetUsers(ctx context.Context) ([]Account, error)
+	GetUserTransactions(ctx context.Context) ([]GetUserTransactionsRow, error)
 	WithTx(tx *sql.Tx) DBQuery
 }

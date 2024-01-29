@@ -2,11 +2,9 @@ package service
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"net/http"
 	"regexp"
-	"time"
 
 	"github.com/ATMackay/psql-ledger/database"
 )
@@ -18,6 +16,8 @@ const (
 	GetAccount           = "/account-by-index"
 	GetAccountByEmail    = "/account-by-email"
 	GetAccountByUsername = "/account-by-username"
+
+	GetAccountTransactions = "/account-txs"
 
 	CreateTx      = "/create-tx"
 	CreateAccount = "/create-account"
@@ -48,6 +48,11 @@ func makeServiceAPIs(s *Service) *API {
 		EndPoint{
 			Path:       GetAccountByUsername,
 			Handler:    s.AccountByUsername,
+			MethodType: http.MethodGet,
+		},
+		EndPoint{
+			Path:       GetAccountTransactions,
+			Handler:    s.TxHistory,
 			MethodType: http.MethodGet,
 		},
 		EndPoint{
@@ -103,15 +108,6 @@ func (s *Service) Health(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-type AccountParams struct {
-	Username string `json:"username"`
-	Email    string `json:"email"`
-	Balance  int64  `json:"balance"`
-
-	ID        int64     `json:"id"`
-	CreatedAt time.Time `json:"created_at"`
-}
-
 const (
 	// This regex defines the regular expression for simple email formats
 	//
@@ -127,10 +123,10 @@ const (
 	usernameRegex = "^[a-zA-Z0-9]+$"
 )
 
-func validAccountParams(c AccountParams) error {
+func validAccountParams(c database.Account) error {
 	// validate email input
-	if c.Email != "" {
-		if err := isValidString(c.Email, emailRegex); err != nil {
+	if c.Email.String != "" {
+		if err := isValidString(c.Email.String, emailRegex); err != nil {
 			return fmt.Errorf("invalid user email: %v", err)
 		}
 	}
@@ -159,7 +155,7 @@ func isValidString(input string, regex string) error {
 
 // AccountByIndex requests the account for supplied ID number
 func (s *Service) AccountByIndex(w http.ResponseWriter, r *http.Request) {
-	var c AccountParams
+	var c database.Account
 	if err := DecodeJSON(r.Body, &c); err != nil {
 		RespondWithError(w, http.StatusBadRequest, err)
 		return
@@ -171,20 +167,20 @@ func (s *Service) AccountByIndex(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Execute Query against PSQL
-	acc, err := s.db.QueryClient().GetUser(context.Background(), c.ID)
+	acc, err := s.db.NewQuery().GetUser(context.Background(), c.ID)
 	if err != nil {
 		RespondWithError(w, http.StatusInternalServerError, err)
 		return
 	}
 
-	if err := RespondWithJSON(w, http.StatusOK, &AccountParams{ID: acc.ID, Username: acc.Username, Email: acc.Email.String, CreatedAt: acc.CreatedAt.Time}); err != nil {
+	if err := RespondWithJSON(w, http.StatusOK, acc); err != nil {
 		s.logger.Error(err)
 	}
 }
 
 // AccountByUsername requests the account for supplied ID number
 func (s *Service) AccountByUsername(w http.ResponseWriter, r *http.Request) {
-	var c AccountParams
+	var c database.Account
 	if err := DecodeJSON(r.Body, &c); err != nil {
 		RespondWithError(w, http.StatusBadRequest, err)
 		return
@@ -197,20 +193,20 @@ func (s *Service) AccountByUsername(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Execute Query against PSQL
-	acc, err := s.db.QueryClient().GetUserByUsername(context.Background(), c.Username)
+	acc, err := s.db.NewQuery().GetUserByUsername(context.Background(), c.Username)
 	if err != nil {
 		RespondWithError(w, http.StatusInternalServerError, err)
 		return
 	}
 
-	if err := RespondWithJSON(w, http.StatusOK, &AccountParams{ID: acc.ID, Username: acc.Username, Email: acc.Email.String, CreatedAt: acc.CreatedAt.Time}); err != nil {
+	if err := RespondWithJSON(w, http.StatusOK, acc); err != nil {
 		s.logger.Error(err)
 	}
 }
 
 // AccountByUsername requests the account for supplied ID number
 func (s *Service) AccountByEmail(w http.ResponseWriter, r *http.Request) {
-	var c AccountParams
+	var c database.Account
 	if err := DecodeJSON(r.Body, &c); err != nil {
 		RespondWithError(w, http.StatusBadRequest, err)
 		return
@@ -221,13 +217,13 @@ func (s *Service) AccountByEmail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Execute Query against PSQL
-	acc, err := s.db.QueryClient().GetUserByEmail(context.Background(), sql.NullString{String: c.Email})
+	acc, err := s.db.NewQuery().GetUserByEmail(context.Background(), c.Email)
 	if err != nil {
 		RespondWithError(w, http.StatusInternalServerError, err)
 		return
 	}
 
-	if err := RespondWithJSON(w, http.StatusOK, &AccountParams{ID: acc.ID, Username: acc.Username, Email: acc.Email.String, CreatedAt: acc.CreatedAt.Time}); err != nil {
+	if err := RespondWithJSON(w, http.StatusOK, acc); err != nil {
 		s.logger.Error(err)
 	}
 }
@@ -235,7 +231,7 @@ func (s *Service) AccountByEmail(w http.ResponseWriter, r *http.Request) {
 // Write Requests
 
 func (s *Service) CreateAccount(w http.ResponseWriter, r *http.Request) {
-	var c AccountParams
+	var c database.Account
 	if err := DecodeJSON(r.Body, &c); err != nil {
 		RespondWithError(w, http.StatusBadRequest, err)
 		return
@@ -248,8 +244,8 @@ func (s *Service) CreateAccount(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Execute Query against PSQL
-	acc, err := s.db.QueryClient().CreateAccount(context.Background(), database.CreateAccountParams{
-		Email:    sql.NullString{String: c.Email},
+	acc, err := s.db.NewQuery().CreateAccount(context.Background(), database.CreateAccountParams{
+		Email:    c.Email,
 		Username: c.Username,
 		Balance:  0,
 	})
@@ -258,55 +254,86 @@ func (s *Service) CreateAccount(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := RespondWithJSON(w, http.StatusOK, &AccountParams{ID: acc.ID, Username: acc.Username, Email: acc.Email.String, CreatedAt: acc.CreatedAt.Time}); err != nil {
+	if err := RespondWithJSON(w, http.StatusOK, acc); err != nil {
 		s.logger.Error(err)
 	}
 
 }
 
-type TxParams struct {
-	FromAccount int64 `json:"from_account"`
-	ToAccount   int64 `json:"to_account"`
-	Amount      int64 `json:"amount"`
-
-	ID        int64     `json:"id"`
-	CreatedAt time.Time `json:"created_at"`
-}
-
 // Read Requests
 
 func (s *Service) TxHistory(w http.ResponseWriter, r *http.Request) {
-	// TODO
-}
-
-// Write Requests
-
-func (s *Service) CreateTx(w http.ResponseWriter, r *http.Request) {
-	var txParams TxParams
-	if err := DecodeJSON(r.Body, &txParams); err != nil {
+	var c database.Account
+	if err := DecodeJSON(r.Body, &c); err != nil {
 		RespondWithError(w, http.StatusBadRequest, err)
 		return
 	}
 
-	// Validate data
-	if txParams.Amount <= 0 {
-		RespondWithError(w, http.StatusBadRequest, fmt.Errorf("cannot send negative amount '%v'", txParams.Amount))
+	if c.ID == 0 {
+		RespondWithError(w, http.StatusBadRequest, fmt.Errorf("cannot supply account ID = 0"))
+		return
 	}
 
-	// Check to and from account exist
-
 	// Execute Query against PSQL
-	tx, err := s.db.QueryClient().CreateTransaction(context.Background(), database.CreateTransactionParams{
-		FromAccount: sql.NullInt64{Int64: txParams.FromAccount},
-		ToAccount:   sql.NullInt64{Int64: txParams.FromAccount},
-		Amount:      sql.NullInt64{Int64: txParams.Amount},
-	})
+	txs, err := s.db.NewQuery().GetUserTransactions(context.Background())
 	if err != nil {
 		RespondWithError(w, http.StatusInternalServerError, err)
 		return
 	}
 
-	if err := RespondWithJSON(w, http.StatusOK, &TxParams{ID: tx.ID, CreatedAt: tx.CreatedAt.Time, FromAccount: tx.FromAccount.Int64, ToAccount: tx.ToAccount.Int64}); err != nil {
+	// TODO - this is not efficient. Need to create the correct query as opposed to dumping the entire tx set
+	var filteredTx []*database.GetUserTransactionsRow
+	for i := range txs {
+
+		tx := txs[i]
+
+		if tx.FromAccountID.Int64 == c.ID || tx.ToAccountID.Int64 == c.ID {
+			filteredTx = append(filteredTx, &tx)
+		}
+	}
+
+	if err := RespondWithJSON(w, http.StatusOK, filteredTx); err != nil {
+		s.logger.Error(err)
+	}
+}
+
+// Write Requests
+
+func (s *Service) CreateTx(w http.ResponseWriter, r *http.Request) {
+	var txParams database.Transaction
+	if err := DecodeJSON(r.Body, &txParams); err != nil {
+		RespondWithError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	// Validate amount
+	if txParams.Amount.Int64 <= 0 {
+		RespondWithError(w, http.StatusBadRequest, fmt.Errorf("cannot send negative amount '%v'", txParams.Amount))
+	}
+
+	// Check to and from account exist
+	if _, err := s.db.NewQuery().GetUser(context.Background(), txParams.FromAccount.Int64); err != nil {
+		RespondWithError(w, http.StatusBadRequest, err)
+		return
+	}
+	if _, err := s.db.NewQuery().GetUser(context.Background(), txParams.ToAccount.Int64); err != nil {
+		RespondWithError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	// Execute Query against PSQL
+	tx, err := s.db.NewQuery().CreateTransaction(context.Background(), database.CreateTransactionParams{
+		FromAccount: txParams.FromAccount,
+		ToAccount:   txParams.FromAccount,
+		Amount:      txParams.Amount,
+	})
+	if err != nil {
+		RespondWithError(w, http.StatusInternalServerError, err)
+		return
+	}
+	// TODO, update user balance - requires using DB Tx (with rollback)
+
+	if err := RespondWithJSON(w, http.StatusOK, tx); err != nil {
 		s.logger.Error(err)
 	}
 }
