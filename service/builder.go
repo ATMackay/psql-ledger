@@ -40,18 +40,3 @@ func New(port int, l *logrus.Entry, db database.DB) *Service {
 	s.server = server
 	return s
 }
-
-func makeServiceAPIs(s *Service) *API {
-	return MakeAPI([]EndPoint{
-		EndPoint{
-			Path:       "/create-tx",
-			Handler:    s.CreateTx,
-			MethodType: "POST",
-		},
-		EndPoint{
-			Path:       "/create-account",
-			Handler:    s.CreateAccount,
-			MethodType: "POST",
-		},
-	})
-}

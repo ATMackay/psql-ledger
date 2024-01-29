@@ -7,6 +7,7 @@ import (
 
 type DB interface {
 	Close() error
+	Ping() error
 	QueryClient() DBQuery
 }
 
@@ -19,5 +20,5 @@ type DBQuery interface {
 	GetUserByEmail(ctx context.Context, email sql.NullString) (Account, error)
 	GetUserByUsername(ctx context.Context, username string) (Account, error)
 	GetUsers(ctx context.Context) ([]Account, error)
-	WithTx(tx *sql.Tx) *Queries
+	WithTx(tx *sql.Tx) DBQuery
 }

@@ -20,16 +20,16 @@ createdb:
 	docker exec -it postgres createdb --username=root --owner=root bank
 
 dropdb: 
-	docker exec -it postgres dropdb --username=root --owner=root bank
+	docker exec -it postgres dropdb --username=root bank
 
 migrateup:
-	migrate --path psql/migration --databse "postgresql://root:secret@localhost:5432/bank?sslmode=disable" --verbose up
+	migrate --path database/sqlc/migration --databse "postgresql://root:secret@localhost:5432/bank?sslmode=disable" --verbose up
 
-migrateup:
-	migrate --path psql/migration --databse "postgresql://root:secret@localhost:5432/bank?sslmode=disable" --verbose down
+migratedown:
+	migrate --path database/sqlc/migration --databse "postgresql://root:secret@localhost:5432/bank?sslmode=disable" --verbose down
 
 # Requires sqlc installation: https://docs.sqlc.dev/en/stable/overview/install.html
 sqlc: 
 	cd database/sqlc && sqlc generate && mv ./db/* ..
 
-.PHONY: postgres createdb dropdb migrateup migratedown
+.PHONY: build docker postgres createdb dropdb migrateup migratedown sqlc

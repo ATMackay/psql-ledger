@@ -17,6 +17,10 @@ func NewMemDB() MemoryDB {
 	return MemoryDB{FakeClient{}}
 }
 
+func (m MemoryDB) Ping() error {
+	return nil
+}
+
 func (m MemoryDB) Close() error {
 	return nil
 }
@@ -59,8 +63,8 @@ func (f FakeClient) GetUsers(ctx context.Context) ([]Account, error) {
 	return []Account{}, nil
 }
 
-func (f FakeClient) WithTx(tx *sql.Tx) *Queries {
-	return &Queries{}
+func (f FakeClient) WithTx(tx *sql.Tx) DBQuery {
+	return f
 }
 
 type FakeDBTx struct{}

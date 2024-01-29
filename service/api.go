@@ -10,6 +10,79 @@ import (
 	"github.com/ATMackay/psql-ledger/database"
 )
 
+const (
+	status = "/status"
+	health = "/health"
+
+	createTx      = "/create-tx"
+	createAccount = "/create-account"
+)
+
+func makeServiceAPIs(s *Service) *API {
+	return MakeAPI([]EndPoint{
+		EndPoint{
+			Path:       status,
+			Handler:    s.Status,
+			MethodType: "GET",
+		},
+		EndPoint{
+			Path:       health,
+			Handler:    s.Status,
+			MethodType: "GET",
+		},
+		EndPoint{
+			Path:       createTx,
+			Handler:    s.CreateTx,
+			MethodType: "POST",
+		},
+		EndPoint{
+			Path:       createAccount,
+			Handler:    s.CreateAccount,
+			MethodType: "POST",
+		},
+	})
+}
+
+// StatusResponse contains status response fields.
+type StatusResponse struct {
+	Message string `json:"message,omitempty"`
+	Version string `json:"version,omitempty"`
+	Service string `json:"service,omitempty"`
+}
+
+func (s *Service) Status(w http.ResponseWriter, r *http.Request) {
+	resp := StatusResponse{Message: "OK", Version: FullVersion, Service: serviceName}
+	if err := RespondWithJSON(w, http.StatusOK, resp); err != nil {
+		s.logger.Error(err)
+	}
+}
+
+// HealthResponse contains status response fields.
+type HealthResponse struct {
+	Message  string   `json:"message,omitempty"`
+	Version  string   `json:"version,omitempty"`
+	Service  string   `json:"service,omitempty"`
+	Failures []string `json:"failures"`
+}
+
+func (s *Service) Health(w http.ResponseWriter, r *http.Request) {
+	health := &HealthResponse{
+		Service: serviceName,
+		Version: FullVersion,
+	}
+	var failures = []string{}
+
+	if err := s.db.Ping(); err != nil {
+		failures = append(failures, fmt.Sprintf("DB: %v", err))
+	}
+
+	health.Failures = failures
+
+	if err := RespondWithJSON(w, http.StatusOK, health); err != nil {
+		s.logger.Error(err)
+	}
+}
+
 // Read Requests
 
 func (s *Service) User(w http.ResponseWriter, r *http.Request) {

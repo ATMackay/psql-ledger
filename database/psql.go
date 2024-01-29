@@ -30,6 +30,10 @@ func NewPSQLClient(connString string) (*PSQLClient, error) {
 	return &PSQLClient{name: connString, db: db, queryClient: New(db)}, nil
 }
 
+func (p *PSQLClient) Ping() error {
+	return p.db.Ping()
+}
+
 func (p *PSQLClient) Close() error {
 	return p.db.Close()
 }

@@ -21,8 +21,14 @@ jobs:
       with:
         go-version: '1.21'
 
-    - name: Build
+    - name: build
       run: go build -v ./...
 
-    - name: Test
-      run: go test -v ./...
+    - name: service-test
+      run: go test -v -cover ./service/...
+
+    - name: database-test
+      run: go test -v -cover ./database/...
+    
+    - name: integration-test
+      run: go test -v -cover ./integrationtests/...

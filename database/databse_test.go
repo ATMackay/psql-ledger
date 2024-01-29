@@ -8,6 +8,7 @@ func Test_Queries(t *testing.T) {
 	test := []struct {
 		name string
 		api  func() error
+		expectErr bool
 	}{
 		{"create-account", func() error {
 			_, err := q.CreateAccount(context.Background(), CreateAccountParams{})
