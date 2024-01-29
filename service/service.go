@@ -22,6 +22,11 @@ func (s *Service) Start() {
 
 func (s *Service) Stop(sig os.Signal) {
 	s.logger.WithFields(logrus.Fields{"signal": sig}).Infof("stopping %v service", serviceName)
+
+	if err := s.db.Close(); err != nil {
+		s.logger.WithFields(logrus.Fields{"error": err}).Error("error closing db")
+	}
+
 	if err := s.server.Stop(); err != nil {
 		s.logger.WithFields(logrus.Fields{"error": err}).Error("error stopping server")
 	}

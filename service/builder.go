@@ -19,10 +19,10 @@ func BuildService(cfg Config) (*Service, error) {
 	}
 
 	if defaultUsed {
-		l.Infof("no config parameters supplied: using default")
+		l.Warnf("no config parameters supplied: using default")
 	}
 
-	connString := fmt.Sprintf("user=%v password=%v dbname=%v sslmode=disable", config.PostgresUser, config.PostgresPassword, config.PostgresDB)
+	connString := fmt.Sprintf("host=%v port=%v user=%v password=%v dbname=%v sslmode=disable", config.PostgresHost, config.PostgresPort, config.PostgresUser, config.PostgresPassword, config.PostgresDB)
 	db, err := database.NewPSQLClient(connString)
 	if err != nil {
 		return nil, err

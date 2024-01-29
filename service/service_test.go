@@ -23,7 +23,7 @@ func Test_SantizeConfig(t *testing.T) {
 	}
 
 	b, _ := yaml.Marshal(c)
-	e, _ := yaml.Marshal(defaultConfig)
+	e, _ := yaml.Marshal(DefaultConfig)
 	if !bytes.Equal(b, e) {
 		t.Errorf("returned config not equal to default")
 	}
@@ -58,14 +58,14 @@ func Test_API(t *testing.T) {
 	}{
 		{
 			"status",
-			status,
+			Status,
 			s.Status,
 			&StatusResponse{Message: "OK", Version: FullVersion, Service: serviceName},
 			http.StatusOK,
 		},
 		{
 			"health",
-			health,
+			Health,
 			s.Health,
 			&HealthResponse{Version: FullVersion, Service: serviceName, Failures: []string{}},
 			http.StatusOK,

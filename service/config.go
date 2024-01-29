@@ -20,7 +20,7 @@ type Config struct {
 
 var emptyConfig = Config{}
 
-var defaultConfig = Config{
+var DefaultConfig = Config{
 	Port:             8080,
 	LogLevel:         string(Info),
 	LogFormat:        string(Plain),
@@ -43,42 +43,42 @@ func isEmpty(c Config) bool {
 func sanitizeConfig(config Config) (cfg Config, defaultUsed bool) {
 	if isEmpty(config) {
 		defaultUsed = true
-		cfg = defaultConfig
+		cfg = DefaultConfig
 		return
 	}
 
 	cfg = config
 
 	if config.Port == 0 {
-		cfg.Port = defaultConfig.Port
+		cfg.Port = DefaultConfig.Port
 	}
 
 	if config.LogLevel == "" {
-		cfg.LogLevel = defaultConfig.LogLevel
+		cfg.LogLevel = DefaultConfig.LogLevel
 	}
 
 	if config.LogFormat == "" {
-		cfg.LogFormat = defaultConfig.LogFormat
+		cfg.LogFormat = DefaultConfig.LogFormat
 	}
 
 	if config.PostgresHost == "" {
-		cfg.PostgresHost = defaultConfig.PostgresHost
+		cfg.PostgresHost = DefaultConfig.PostgresHost
 	}
 
 	if config.PostgresPort == 0 {
-		cfg.PostgresPort = defaultConfig.PostgresPort
+		cfg.PostgresPort = DefaultConfig.PostgresPort
 	}
 
 	if config.PostgresUser == "" {
-		cfg.PostgresUser = defaultConfig.PostgresUser
+		cfg.PostgresUser = DefaultConfig.PostgresUser
 	}
 
 	if config.PostgresPassword == "" {
-		cfg.PostgresPassword = defaultConfig.PostgresPassword
+		cfg.PostgresPassword = DefaultConfig.PostgresPassword
 	}
 
 	if config.PostgresDB == "" {
-		cfg.PostgresDB = defaultConfig.PostgresDB
+		cfg.PostgresDB = DefaultConfig.PostgresDB
 	}
 	return
 }

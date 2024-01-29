@@ -11,32 +11,32 @@ import (
 )
 
 const (
-	status = "/status"
-	health = "/health"
+	Status = "/status"
+	Health = "/health"
 
-	createTx      = "/create-tx"
-	createAccount = "/create-account"
+	CreateTx      = "/create-tx"
+	CreateAccount = "/create-account"
 )
 
 func makeServiceAPIs(s *Service) *API {
 	return MakeAPI([]EndPoint{
 		EndPoint{
-			Path:       status,
+			Path:       Status,
 			Handler:    s.Status,
 			MethodType: "GET",
 		},
 		EndPoint{
-			Path:       health,
+			Path:       Health,
 			Handler:    s.Status,
 			MethodType: "GET",
 		},
 		EndPoint{
-			Path:       createTx,
+			Path:       CreateTx,
 			Handler:    s.CreateTx,
 			MethodType: "POST",
 		},
 		EndPoint{
-			Path:       createAccount,
+			Path:       CreateAccount,
 			Handler:    s.CreateAccount,
 			MethodType: "POST",
 		},
@@ -59,7 +59,6 @@ func (s *Service) Status(w http.ResponseWriter, r *http.Request) {
 
 // HealthResponse contains status response fields.
 type HealthResponse struct {
-	Message  string   `json:"message,omitempty"`
 	Version  string   `json:"version,omitempty"`
 	Service  string   `json:"service,omitempty"`
 	Failures []string `json:"failures"`
