@@ -8,7 +8,7 @@ import (
 
 var (
 	gitCommit string // overwritten by -ldflag "-X 'github.com/ATMackay/psql-ledger/service.gitCommit=$commit_hash'"
-	buildDate string // overwritten by -ldflag "-X 'github.com/qredo/fusionchain/keyring/pkg/common.buildDate=$build_date'"
+	buildDate string // overwritten by -ldflag "-X 'github.com/ATMackay/psql-ledger/service.buildDate=$build_date'"
 )
 
 // GitCommitHash https://icinga.com/blog/2022/05/25/embedding-git-commit-information-in-go-binaries/

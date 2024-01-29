@@ -21,4 +21,4 @@ docker build \
        --build-arg GIT_SHA="$commit_hash" \
        -t "${ECR}"psqlledger:latest  \
        -t "${ECR}"psqlledger:"$commit_hash_short"  \
-       -f Dockerfile-psqlledger ..
+       -f Dockerfile ..

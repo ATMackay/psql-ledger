@@ -6,7 +6,7 @@ RUN apk add make cmake git alpine-sdk
 # Setup
 
 # Read arguments
-ARG ARCH=x86_64
+ARG ARCH
 ARG BUILD_DATE
 ARG GIT_SHA
 ARG SERVICE
@@ -28,7 +28,7 @@ RUN go mod download
 
 RUN GO111MODULES=on \
     go build \
-    -ldflags "-w -linkmode external -extldflags '-static' -X 'github.com/qredo/fusionchain/keyring/pkg/common.linkedDate=${build_date}' -X 'github.com/qredo/fusionchain/keyring/pkg/common.linkedCommit=${commit_hash}'"  \
+    -ldflags "-w -linkmode external -extldflags '-static' -X 'github.com/ATMackay/psql-ledger/service.buildDate=${build_date}' -X 'github.com/ATMackay/psql-ledger/service.gitCommit=${commit_hash}'"  \
     -tags netgo \
     -o /out/psqlledger ./cmd/psqlledger/
 
@@ -42,8 +42,8 @@ RUN mkdir /out/etc && \
     echo "macgroup:x:20:macuser" >> /out/etc/group && \
     echo "linuxgroup:x:1000:linuxuser" >> /out/etc/group && \
     echo "root:x:0:root" >> /out/etc/group && \
-    mkdir /out/ && \
-    chown -R 1010:1010 /out/
+    mkdir /out/config && \
+    chown -R 1010:1010 /out/config
 
 
 ############################################################################################################
