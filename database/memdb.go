@@ -36,11 +36,11 @@ func (m MemoryDB) NewTransaction() (DBQuery, error) {
 type FakeClient struct{}
 
 func (f FakeClient) CreateAccount(ctx context.Context, arg CreateAccountParams) (Account, error) {
-	return Account{}, nil
+	return Account{ID: 1, Balance: 0, Username: arg.Username, Email: arg.Email}, nil
 }
 
 func (f FakeClient) CreateTransaction(ctx context.Context, arg CreateTransactionParams) (Transaction, error) {
-	return Transaction{}, nil
+	return Transaction{ID: 1, FromAccount: arg.FromAccount, ToAccount: arg.ToAccount, Amount: arg.Amount}, nil
 }
 
 func (f FakeClient) DeleteAccount(ctx context.Context, id int64) error {
@@ -48,27 +48,27 @@ func (f FakeClient) DeleteAccount(ctx context.Context, id int64) error {
 }
 
 func (f FakeClient) GetTx(ctx context.Context, id int64) (Transaction, error) {
-	return Transaction{}, nil
+	return Transaction{ID: id}, nil
 }
 
 func (f FakeClient) GetUser(ctx context.Context, id int64) (Account, error) {
-	return Account{}, nil
+	return Account{ID: id}, nil
 }
 
 func (f FakeClient) GetUserByEmail(ctx context.Context, email sql.NullString) (Account, error) {
-	return Account{}, nil
+	return Account{ID: 1, Email: email}, nil
 }
 
 func (f FakeClient) GetUserByUsername(ctx context.Context, username string) (Account, error) {
-	return Account{}, nil
+	return Account{ID: 1, Username: username}, nil
 }
 
 func (f FakeClient) GetUsers(ctx context.Context) ([]Account, error) {
-	return []Account{}, nil
+	return []Account{Account{ID: 1}}, nil
 }
 
 func (f FakeClient) GetUserTransactions(ctx context.Context) ([]GetUserTransactionsRow, error) {
-	return []GetUserTransactionsRow{}, nil
+	return []GetUserTransactionsRow{GetUserTransactionsRow{TransactionID: 1, FromAccountID: sql.NullInt64{Int64: 1}, ToAccountID: sql.NullInt64{Int64: 2}, Amount: sql.NullInt64{Int64: 1}}}, nil
 }
 
 func (f FakeClient) WithTx(tx *sql.Tx) DBQuery {

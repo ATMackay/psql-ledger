@@ -13,11 +13,14 @@ const (
 	Status = "/status"
 	Health = "/health"
 
+	Accounts             = "/accounts"
 	GetAccount           = "/account-by-index"
 	GetAccountByEmail    = "/account-by-email"
 	GetAccountByUsername = "/account-by-username"
 
 	GetAccountTransactions = "/account-txs"
+
+	GetTransactionByIndex = "/tx"
 
 	CreateTx      = "/create-tx"
 	CreateAccount = "/create-account"
@@ -33,6 +36,11 @@ func makeServiceAPIs(s *Service) *API {
 		EndPoint{
 			Path:       Health,
 			Handler:    s.Health,
+			MethodType: http.MethodGet,
+		},
+		EndPoint{
+			Path:       Accounts,
+			Handler:    s.Accounts,
 			MethodType: http.MethodGet,
 		},
 		EndPoint{
@@ -56,6 +64,11 @@ func makeServiceAPIs(s *Service) *API {
 			MethodType: http.MethodGet,
 		},
 		EndPoint{
+			Path:       GetTransactionByIndex,
+			Handler:    s.TransactionByIndex,
+			MethodType: http.MethodGet,
+		},
+		EndPoint{
 			Path:       CreateTx,
 			Handler:    s.CreateTx,
 			MethodType: http.MethodPost,
@@ -76,8 +89,7 @@ type StatusResponse struct {
 }
 
 func (s *Service) Status(w http.ResponseWriter, r *http.Request) {
-	resp := StatusResponse{Message: "OK", Version: FullVersion, Service: serviceName}
-	if err := RespondWithJSON(w, http.StatusOK, resp); err != nil {
+	if err := RespondWithJSON(w, http.StatusOK, &StatusResponse{Message: "OK", Version: FullVersion, Service: serviceName}); err != nil {
 		s.logger.Error(err)
 	}
 }
@@ -152,6 +164,20 @@ func isValidString(input string, regex string) error {
 }
 
 // Read Requests
+
+// Accounts requests the full list if accounts stored in the DB - TODO paginate this request
+func (s *Service) Accounts(w http.ResponseWriter, r *http.Request) {
+	// Execute Query against PSQL
+	acc, err := s.db.NewQuery().GetUsers(context.Background())
+	if err != nil {
+		RespondWithError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	if err := RespondWithJSON(w, http.StatusOK, acc); err != nil {
+		s.logger.Error(err)
+	}
+}
 
 // AccountByIndex requests the account for supplied ID number
 func (s *Service) AccountByIndex(w http.ResponseWriter, r *http.Request) {
@@ -262,6 +288,31 @@ func (s *Service) CreateAccount(w http.ResponseWriter, r *http.Request) {
 
 // Read Requests
 
+// TransactionByIndex requests the transaction for supplied ID number
+func (s *Service) TransactionByIndex(w http.ResponseWriter, r *http.Request) {
+	var txParams database.Transaction
+	if err := DecodeJSON(r.Body, &txParams); err != nil {
+		RespondWithError(w, http.StatusBadRequest, err)
+		return
+	}
+
+	if txParams.ID == 0 {
+		RespondWithError(w, http.StatusBadRequest, fmt.Errorf("cannot supply account ID = 0"))
+		return
+	}
+
+	// Execute Query against PSQL
+	tx, err := s.db.NewQuery().GetTx(context.Background(), txParams.ID)
+	if err != nil {
+		RespondWithError(w, http.StatusInternalServerError, err)
+		return
+	}
+
+	if err := RespondWithJSON(w, http.StatusOK, tx); err != nil {
+		s.logger.Error(err)
+	}
+}
+
 func (s *Service) TxHistory(w http.ResponseWriter, r *http.Request) {
 	var c database.Account
 	if err := DecodeJSON(r.Body, &c); err != nil {
@@ -309,6 +360,12 @@ func (s *Service) CreateTx(w http.ResponseWriter, r *http.Request) {
 	// Validate amount
 	if txParams.Amount.Int64 <= 0 {
 		RespondWithError(w, http.StatusBadRequest, fmt.Errorf("cannot send negative amount '%v'", txParams.Amount))
+		return
+	}
+
+	if txParams.FromAccount.Int64 == txParams.ToAccount.Int64 {
+		RespondWithError(w, http.StatusBadRequest, fmt.Errorf("to and from account cannot match"))
+		return
 	}
 
 	// Check to and from account exist
@@ -324,7 +381,7 @@ func (s *Service) CreateTx(w http.ResponseWriter, r *http.Request) {
 	// Execute Query against PSQL
 	tx, err := s.db.NewQuery().CreateTransaction(context.Background(), database.CreateTransactionParams{
 		FromAccount: txParams.FromAccount,
-		ToAccount:   txParams.FromAccount,
+		ToAccount:   txParams.ToAccount,
 		Amount:      txParams.Amount,
 	})
 	if err != nil {
