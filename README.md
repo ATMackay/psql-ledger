@@ -1,6 +1,6 @@
 # A simple transaction ledger implemented in Go and PostgreSQL
 
-This project contains packages for creating a web backend stack for the purpose of recording transactions between users.
+This project contains packages for creating a web backend stack for creating user accounts and recording transactions between users.
 
 Components
 
