@@ -78,6 +78,8 @@ func createStack(t *testing.T) *stack {
 	cfg.PostgresUser = postgresUsr
 	cfg.PostgresPassword = postgresPswd
 	cfg.PostgresDB = postgresDB
+	cfg.MigrationsPath = "../sqlc/migrations"
+	cfg.LogLevel = "debug"
 
 	time.Sleep(500 * time.Millisecond) // TODO - code smell, fix
 
@@ -96,8 +98,15 @@ func createStack(t *testing.T) *stack {
 		}
 	})
 
+	// migrate DB - TODO
+
 	// Start HTTP service
 	psqlLedger.Start()
+	time.Sleep(50 * time.Millisecond) // TODO - code smell
 
 	return &stack{psql: psqlContainer, psqlLedger: psqlLedger}
+}
+
+func initializeRelationalDB() {
+	//TODO
 }

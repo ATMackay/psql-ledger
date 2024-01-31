@@ -11,11 +11,12 @@ type Config struct {
 	LogLevel         string `yaml:"loglevel"`
 	LogFormat        string `yaml:"logformat"`
 	LogToFile        bool   `yaml:"logtofile"`
-	PostgresHost     string `yaml:"postgreshost"`
-	PostgresPort     int    `yaml:"postgresport"`
-	PostgresUser     string `yaml:"postgresuser"`
-	PostgresPassword string `yaml:"postgrespassword"`
-	PostgresDB       string `yaml:"postgresdb"`
+	PostgresHost     string `yaml:"postgres_host"`
+	PostgresPort     int    `yaml:"postgres_port"`
+	PostgresUser     string `yaml:"postgres_user"`
+	PostgresPassword string `yaml:"postgres_password"`
+	PostgresDB       string `yaml:"postgres_db"`
+	MigrationsPath   string `yaml:"migrations_path"`
 }
 
 var emptyConfig = Config{}
@@ -30,7 +31,7 @@ var DefaultConfig = Config{
 	PostgresUser:     "root",      //
 	PostgresPassword: "secret",    //
 	PostgresDB:       "bank",      //
-
+	MigrationsPath:   "../sqlc/migrations",
 }
 
 func isEmpty(c Config) bool {
@@ -79,6 +80,10 @@ func sanitizeConfig(config Config) (cfg Config, defaultUsed bool) {
 
 	if config.PostgresDB == "" {
 		cfg.PostgresDB = DefaultConfig.PostgresDB
+	}
+
+	if config.MigrationsPath == "" {
+		cfg.MigrationsPath = DefaultConfig.MigrationsPath
 	}
 	return
 }

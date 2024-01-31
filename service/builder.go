@@ -22,17 +22,11 @@ func BuildService(cfg Config) (*Service, error) {
 		l.Warnf("no config parameters supplied: using default")
 	}
 
-	connString := fmt.Sprintf("host=%v port=%v user=%v password=%v dbname=%v sslmode=disable",
-		config.PostgresHost,
-		config.PostgresPort,
-		config.PostgresUser,
-		config.PostgresPassword,
-		config.PostgresDB)
-
-	db, err := database.NewPSQLClient(connString)
+	db, err := makePostgresDB(config)
 	if err != nil {
 		return nil, err
 	}
+
 	l.WithFields(logrus.Fields{
 		"port":     config.Port,
 		"loglevel": config.LogLevel,
@@ -40,9 +34,26 @@ func BuildService(cfg Config) (*Service, error) {
 		"DBPort":   config.PostgresPort,
 		"DBUser":   config.PostgresUser,
 		"DBName":   config.PostgresDB,
-	}).Info("creating psqlledger")
+	}).Info("connected to postgresDB")
 
 	return New(config.Port, l, db), nil
+}
+
+func makePostgresDB(config Config) (*database.PSQLClient, error) {
+
+	db, err := database.NewPSQLClient(config.PostgresHost,
+		config.PostgresPort,
+		config.PostgresUser,
+		config.PostgresPassword,
+		config.PostgresDB)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := db.InitializeSchema(config.MigrationsPath); err != nil {
+		return nil, fmt.Errorf("DB migration up failed: %v", err)
+	}
+	return db, nil
 }
 
 func New(port int, l *logrus.Entry, db database.DB) *Service {
@@ -50,7 +61,7 @@ func New(port int, l *logrus.Entry, db database.DB) *Service {
 		logger: l,
 		db:     db,
 	}
-	server := NewHTTPService(port, makeServiceAPIs(s), l)
-	s.server = server
+	h := NewHTTPService(port, makeServiceAPIs(s), l)
+	s.server = &h
 	return s
 }

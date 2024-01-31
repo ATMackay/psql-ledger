@@ -27,13 +27,13 @@ dropdb:
 
 # Requires migrate installation: https://github.com/golang-migrate/migrate/tree/master/cmd/migrate
 migrateup:
-	migrate -path database/sqlc/migrations -database "postgresql://root:secret@localhost:5432/bank?sslmode=disable" -verbose up
+	migrate -path sqlc/migrations -database "postgresql://root:secret@localhost:5432/bank?sslmode=disable" -verbose up
 
 migratedown:
-	migrate -path database/sqlc/migrations -database "postgresql://root:secret@localhost:5432/bank?sslmode=disable" -verbose down
+	migrate -path sqlc/migrations -database "postgresql://root:secret@localhost:5432/bank?sslmode=disable" -verbose down
 
 # Requires sqlc installation: https://docs.sqlc.dev/en/stable/overview/install.html
 sqlc: 
-	cd database/sqlc && sqlc generate && mv ./db/* ..
+	cd sqlc && sqlc generate
 
 .PHONY: build docker postgres createdb dropdb migrateup migratedown sqlc run

@@ -17,6 +17,10 @@ func NewMemDB() MemoryDB {
 	return MemoryDB{FakeClient{}}
 }
 
+func (m MemoryDB) InitializeSchema(migrationDir string) error {
+	return nil
+}
+
 func (m MemoryDB) Ping() error {
 	return nil
 }

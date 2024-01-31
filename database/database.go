@@ -6,6 +6,7 @@ import (
 )
 
 type DB interface {
+	InitializeSchema(schemaPath string) error
 	Close() error
 	Ping() error
 	NewQuery() DBQuery

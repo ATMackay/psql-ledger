@@ -2,12 +2,15 @@ package service
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
-	"net/http/httptest"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/ATMackay/psql-ledger/database"
 	yaml "gopkg.in/yaml.v3"
@@ -92,18 +95,23 @@ func Test_ServiceStartStop(t *testing.T) {
 
 func Test_API(t *testing.T) {
 	n := "test"
-	log, err := NewLogger("info", "plain", false, n)
+	log, err := NewLogger("error", "plain", false, n)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	s := New(8080, log, database.NewMemDB())
+	s.Start()
+	t.Cleanup(func() {
+		s.Stop(os.Kill)
+	})
+	time.Sleep(50 * time.Millisecond) // TODO - smell
 
 	apiTests := []struct {
 		name             string
 		endpoint         string
+		methodType       string
 		body             func() []byte
-		method           func(w http.ResponseWriter, req *http.Request)
 		expectedResponse any
 		expectedCode     int
 	}{
@@ -113,30 +121,31 @@ func Test_API(t *testing.T) {
 		{
 			"status",
 			Status,
+			http.MethodGet,
 			func() []byte { return nil },
-			s.Status,
 			&StatusResponse{Message: "OK", Version: FullVersion, Service: serviceName},
 			http.StatusOK,
 		},
 		{
 			"health",
 			Health,
+			http.MethodGet,
 			func() []byte { return nil },
-			s.Health,
 			&HealthResponse{Version: FullVersion, Service: serviceName, Failures: []string{}},
 			http.StatusOK,
 		},
 		{
 			"accounts",
-			GetAccount,
+			Accounts,
+			http.MethodGet,
 			func() []byte { return nil },
-			s.Accounts,
 			&[]database.Account{database.Account{ID: 1}},
 			http.StatusOK,
 		},
 		{
 			"account-by-index",
 			GetAccount,
+			http.MethodGet,
 			func() []byte {
 				accParams := database.Account{ID: 1}
 				b, err := json.Marshal(accParams)
@@ -145,13 +154,13 @@ func Test_API(t *testing.T) {
 				}
 				return b
 			},
-			s.AccountByIndex,
 			&database.Account{ID: 1},
 			http.StatusOK,
 		},
 		{
 			"account-by-email",
 			GetAccountByEmail,
+			http.MethodGet,
 			func() []byte {
 				e := "name@emailprovider.com"
 				accParams := database.Account{Email: sql.NullString{String: e}}
@@ -161,13 +170,13 @@ func Test_API(t *testing.T) {
 				}
 				return b
 			},
-			s.AccountByEmail,
 			&database.Account{ID: 1, Email: sql.NullString{String: "name@emailprovider.com"}},
 			http.StatusOK,
 		},
 		{
 			"account-by-username",
 			GetAccountByUsername,
+			http.MethodGet,
 			func() []byte {
 				usr := "myusername"
 				accParams := database.Account{Username: usr}
@@ -177,13 +186,13 @@ func Test_API(t *testing.T) {
 				}
 				return b
 			},
-			s.AccountByUsername,
 			&database.Account{ID: 1, Username: "myusername"},
 			http.StatusOK,
 		},
 		{
 			"transaction-by-id",
 			GetTransactionByIndex,
+			http.MethodGet,
 			func() []byte {
 				accParams := database.Transaction{ID: 1}
 				b, err := json.Marshal(accParams)
@@ -192,13 +201,13 @@ func Test_API(t *testing.T) {
 				}
 				return b
 			},
-			s.TransactionByIndex,
 			&database.Transaction{ID: 1},
 			http.StatusOK,
 		},
 		{
 			"account-txs",
 			GetAccountTransactions,
+			http.MethodGet,
 			func() []byte {
 				accParams := database.Account{ID: 1}
 				b, err := json.Marshal(accParams)
@@ -207,7 +216,6 @@ func Test_API(t *testing.T) {
 				}
 				return b
 			},
-			s.TxHistory,
 			&[]database.GetUserTransactionsRow{database.GetUserTransactionsRow{TransactionID: 1, FromAccountID: sql.NullInt64{Int64: 1}, ToAccountID: sql.NullInt64{Int64: 2}, Amount: sql.NullInt64{Int64: 1}}},
 			http.StatusOK,
 		},
@@ -217,6 +225,7 @@ func Test_API(t *testing.T) {
 		{
 			"create-account",
 			CreateAccount,
+			http.MethodPost,
 			func() []byte {
 				accParams := database.Account{ID: 1}
 				b, err := json.Marshal(accParams)
@@ -225,13 +234,13 @@ func Test_API(t *testing.T) {
 				}
 				return b
 			},
-			s.CreateAccount,
 			&database.Account{ID: 1},
 			http.StatusOK,
 		},
 		{
 			"create-transaction",
 			CreateTx,
+			http.MethodPost,
 			func() []byte {
 				accParams := database.Transaction{ID: 1, FromAccount: sql.NullInt64{Int64: 1}, ToAccount: sql.NullInt64{Int64: 2}, Amount: sql.NullInt64{Int64: 1}}
 				b, err := json.Marshal(accParams)
@@ -240,7 +249,6 @@ func Test_API(t *testing.T) {
 				}
 				return b
 			},
-			s.CreateTx,
 			&database.Transaction{ID: 1, FromAccount: sql.NullInt64{Int64: 1}, ToAccount: sql.NullInt64{Int64: 2}, Amount: sql.NullInt64{Int64: 1}},
 			http.StatusOK,
 		},
@@ -248,29 +256,31 @@ func Test_API(t *testing.T) {
 
 	for _, tt := range apiTests {
 		t.Run(tt.name, func(t *testing.T) {
-			httpReq := httptest.NewRequest(http.MethodGet, tt.endpoint, bytes.NewReader(tt.body()))
-			respRecorder := httptest.NewRecorder()
-			tt.method(respRecorder, httpReq)
-			if g, w := respRecorder.Code, tt.expectedCode; g != w {
+			req, err := http.NewRequestWithContext(context.Background(), tt.methodType, fmt.Sprintf("http://0.0.0.0%v%v", s.server.Addr(), tt.endpoint), bytes.NewReader(tt.body()))
+			if err != nil {
+				t.Fatal(err)
+			}
+			req.Header.Set("Content-Type", "application/json")
+
+			response, err := http.DefaultClient.Do(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer response.Body.Close()
+
+			// Read the response body
+			b, err := io.ReadAll(response.Body)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if g, w := response.StatusCode, tt.expectedCode; g != w {
 				t.Errorf("unexpected response code, want %v got %v", w, g)
 			}
 			expectedJSON, _ := json.Marshal(tt.expectedResponse)
 
-			if g, w := respRecorder.Body.Bytes(), expectedJSON; !bytes.Equal(g, w) {
+			if g, w := b, expectedJSON; !bytes.Equal(g, w) {
 				t.Fatalf("unexpected response, want %s, got %s", w, g)
 			}
 		})
 	}
 }
-
-/*
-EndPoint{
-	Path:       CreateTx,
-	Handler:    s.CreateTx,
-	MethodType: http.MethodPost,
-},
-EndPoint{
-	Path:       CreateAccount,
-	Handler:    s.CreateAccount,
-	MethodType: http.MethodPost,
-*/

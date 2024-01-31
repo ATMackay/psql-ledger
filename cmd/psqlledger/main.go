@@ -24,7 +24,7 @@ var (
 // OR RUN WITH ENVIRONMENT VARIABLES
 //
 // $ go build
-// $ export PSQLLEDGER_PASSWORD=<your_password>
+// $ export PSQLLEDGER_POSTGRES_PASSWORD=<your_password>
 // $ ./fusionkms
 //
 //

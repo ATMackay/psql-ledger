@@ -12,7 +12,7 @@ var versionFields = logrus.Fields{"buildDate": Date, "gitCommitSha": GitCommitHa
 type Service struct {
 	logger *logrus.Entry
 	db     database.DB
-	server HTTPService
+	server *HTTPService
 }
 
 func (s *Service) Start() {
@@ -30,4 +30,8 @@ func (s *Service) Stop(sig os.Signal) {
 	if err := s.server.Stop(); err != nil {
 		s.logger.WithFields(logrus.Fields{"error": err}).Error("error stopping server")
 	}
+}
+
+func (s *Service) Server() *HTTPService {
+	return s.server
 }
