@@ -3,12 +3,14 @@ package integrationtests
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"testing"
 
+	"github.com/ATMackay/psql-ledger/database"
 	"github.com/ATMackay/psql-ledger/service"
 )
 
@@ -72,33 +74,43 @@ func Test_StackAPI(t *testing.T) {
 	}
 }
 
-/*
 func Test_E2EReadWriteAccount(t *testing.T) {
 
 	s := createStack(t)
 
+	serverURL := fmt.Sprintf("http://0.0.0.0%v", s.psqlLedger.Server().Addr())
+
 	// Healthcheck the stack
-	response, err := executeRequest(http.MethodGet, fmt.Sprintf("http://0.0.0.0%v%v", s.psqlLedger.Server().Addr(), service.Health), nil, http.StatusOK)
+	response, err := executeRequest(http.MethodGet, serverURL+service.Health, nil, http.StatusOK)
 	if err != nil {
 		t.Fatal(err)
 	}
 	response.Body.Close()
 
+	userName := "myusername"
+	email := "myemail@provider.com"
+
 	// Write a User Account to the DB
-	accParams := database.Account{ID: rand.Int63n(1000), Username: "myusername", Email: sql.NullString{String: "myemail@provider.com"}}
+	accParams := database.CreateAccountParams{Username: userName, Email: sql.NullString{String: email}}
 	b, err := json.Marshal(accParams)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	response, err = executeRequest(http.MethodPost, fmt.Sprintf("http://0.0.0.0%v%v", s.psqlLedger.Server().Addr(), service.CreateAccount), bytes.NewReader(b), http.StatusOK)
+	response, err = executeRequest(http.MethodPost, serverURL+service.CreateAccount, bytes.NewReader(b), http.StatusOK)
 	if err != nil {
 		t.Fatal(err)
 	}
 	response.Body.Close()
 
+	queryData := database.Account{ID: 1}
+	queryB, err := json.Marshal(queryData)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	// Check user account exists
-	response, err = executeRequest(http.MethodGet, fmt.Sprintf("http://0.0.0.0%v%v", s.psqlLedger.Server().Addr(), service.GetAccount), bytes.NewReader(b), http.StatusOK)
+	response, err = executeRequest(http.MethodGet, serverURL+service.GetAccount, bytes.NewReader(queryB), http.StatusOK)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -108,21 +120,24 @@ func Test_E2EReadWriteAccount(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Logf("response body %s", respB)
 
-	dat := &database.Account{}
-	if err := json.Unmarshal(respB, dat); err != nil {
+	responseData := &database.Account{}
+	if err := json.Unmarshal(respB, responseData); err != nil {
 		t.Fatal(err)
 	}
 
 	// Verify returned data
 
-	if g, w := dat.ID, accParams.ID; g != w {
+	if g, w := responseData.ID, int64(1); g != w {
 		t.Fatalf("unexpected accountID, want %v got %v", w, g)
 	}
 
-	if g, w := dat.Username, accParams.Username; g != w {
+	if g, w := responseData.Username, accParams.Username; g != w {
 		t.Fatalf("unexpected account username, want %v got %v", w, g)
+	}
+
+	if g, w := responseData.Email, accParams.Email; g != w {
+		t.Fatalf("unexpected account email, want %v got %v", w, g)
 	}
 }
 
@@ -144,5 +159,3 @@ func executeRequest(methodType, url string, body io.Reader, expectedCode int) (*
 	return response, nil
 
 }
-
-*/

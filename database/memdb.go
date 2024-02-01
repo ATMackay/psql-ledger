@@ -3,83 +3,157 @@ package database
 import (
 	"context"
 	"database/sql"
+	"fmt"
+	"sort"
 )
 
-// For testing purposes
+// To be used for testing both in and outside this package
 
-var _ DB = (*MemoryDB)(nil)
+var _ DBClient = (*MemDBClient)(nil)
+var _ DB = (*MemDB)(nil)
+var _ DBQuery = (*MemDBQuery)(nil)
 
-type MemoryDB struct {
-	client FakeClient
+type MemDBClient struct {
+	q  MemDBQuery
+	tx FakeDBTx
 }
 
-func NewMemDB() MemoryDB {
-	return MemoryDB{FakeClient{}}
+func NewMemoryDBClient() MemDBClient {
+	db := newMemDB()
+	return MemDBClient{tx: FakeDBTx{db: &db}, q: MemDBQuery{db: &db}}
 }
 
-func (m MemoryDB) InitializeSchema(migrationDir string) error {
+func (m MemDBClient) InitializeSchema(migrationDir string) error {
 	return nil
 }
 
-func (m MemoryDB) Ping() error {
+func (m MemDBClient) NewQuery() DBQuery {
+	return m.q
+}
+
+func (m MemDBClient) DB() DB {
+	return m.q.db
+}
+
+func (m MemDBClient) NewTransaction() (DBTX, error) {
+	return m.tx, nil
+}
+
+func (m MemDBClient) NewQueryWithTx() (DBQuery, error) {
+	return m.q, nil
+}
+
+func (m MemDBClient) CheckDatabaseExists(ctx context.Context, dbName string) (bool, error) {
+	return true, nil
+}
+
+func newMemDB() MemDB {
+	a := make(map[int64]Account)
+	t := make(map[int64]Transaction)
+	return MemDB{accounts: a, transactions: t}
+}
+
+type MemDB struct {
+	accounts     map[int64]Account
+	transactions map[int64]Transaction
+}
+
+func (m MemDB) Ping() error {
 	return nil
 }
 
-func (m MemoryDB) Close() error {
+func (m MemDB) Close() error {
 	return nil
 }
 
-func (m MemoryDB) NewQuery() DBQuery {
-	return m.client
+type MemDBQuery struct {
+	db *MemDB
 }
 
-func (m MemoryDB) NewTransaction() (DBQuery, error) {
-	return m.client, nil
+func (f MemDBQuery) CreateAccount(ctx context.Context, arg CreateAccountParams) (Account, error) {
+	l := len(f.db.accounts)
+	index := int64(l + 1)
+	a := Account{ID: index, Balance: 0, Username: arg.Username, Email: arg.Email}
+	f.db.accounts[index] = a
+	return a, nil
 }
 
-type FakeClient struct{}
-
-func (f FakeClient) CreateAccount(ctx context.Context, arg CreateAccountParams) (Account, error) {
-	return Account{ID: 1, Balance: 0, Username: arg.Username, Email: arg.Email}, nil
+func (f MemDBQuery) CreateTransaction(ctx context.Context, arg CreateTransactionParams) (Transaction, error) {
+	l := len(f.db.transactions)
+	index := int64(l + 1)
+	tx := Transaction{ID: index, FromAccount: arg.FromAccount, ToAccount: arg.ToAccount, Amount: arg.Amount}
+	f.db.transactions[index] = tx
+	return tx, nil
 }
 
-func (f FakeClient) CreateTransaction(ctx context.Context, arg CreateTransactionParams) (Transaction, error) {
-	return Transaction{ID: 1, FromAccount: arg.FromAccount, ToAccount: arg.ToAccount, Amount: arg.Amount}, nil
-}
-
-func (f FakeClient) DeleteAccount(ctx context.Context, id int64) error {
+func (f MemDBQuery) DeleteAccount(ctx context.Context, id int64) error {
 	return nil
 }
 
-func (f FakeClient) GetTx(ctx context.Context, id int64) (Transaction, error) {
-	return Transaction{ID: id}, nil
+func (f MemDBQuery) GetTx(ctx context.Context, id int64) (Transaction, error) {
+	tx, ok := f.db.transactions[id]
+	if !ok {
+		return Transaction{}, fmt.Errorf("not found")
+	}
+	return tx, nil
 }
 
-func (f FakeClient) GetUser(ctx context.Context, id int64) (Account, error) {
-	return Account{ID: id}, nil
+func (f MemDBQuery) GetUser(ctx context.Context, id int64) (Account, error) {
+	a, ok := f.db.accounts[id]
+	if !ok {
+		return Account{}, fmt.Errorf("not found")
+	}
+	return a, nil
 }
 
-func (f FakeClient) GetUserByEmail(ctx context.Context, email sql.NullString) (Account, error) {
-	return Account{ID: 1, Email: email}, nil
+func (f MemDBQuery) GetUserByEmail(ctx context.Context, email sql.NullString) (Account, error) {
+	var a Account
+	for i := range f.db.accounts {
+		if f.db.accounts[i].Email.String == email.String {
+			a = f.db.accounts[i]
+		}
+	}
+	return a, nil
 }
 
-func (f FakeClient) GetUserByUsername(ctx context.Context, username string) (Account, error) {
-	return Account{ID: 1, Username: username}, nil
+func (f MemDBQuery) GetUserByUsername(ctx context.Context, username string) (Account, error) {
+	var a Account
+	for i := range f.db.accounts {
+		if f.db.accounts[i].Username == username {
+			a = f.db.accounts[i]
+		}
+	}
+	return a, nil
 }
 
-func (f FakeClient) GetUsers(ctx context.Context) ([]Account, error) {
-	return []Account{Account{ID: 1}}, nil
+func (f MemDBQuery) GetUsers(ctx context.Context) ([]Account, error) {
+	var a []Account
+	for i := range f.db.accounts {
+
+		a = append(a, f.db.accounts[i])
+
+	}
+	sort.Slice(a, func(i, j int) bool { return a[i].ID < a[j].ID })
+	return a, nil
 }
 
-func (f FakeClient) GetUserTransactions(ctx context.Context) ([]GetUserTransactionsRow, error) {
-	return []GetUserTransactionsRow{GetUserTransactionsRow{TransactionID: 1, FromAccountID: sql.NullInt64{Int64: 1}, ToAccountID: sql.NullInt64{Int64: 2}, Amount: sql.NullInt64{Int64: 1}}}, nil
+func (f MemDBQuery) GetUserTransactions(ctx context.Context) ([]GetUserTransactionsRow, error) {
+	var txs []GetUserTransactionsRow
+	for i := range f.db.transactions {
+		tx := f.db.transactions[i]
+		txs = append(txs, GetUserTransactionsRow{TransactionID: tx.ID, FromAccountID: tx.FromAccount, ToAccountID: tx.ToAccount, Amount: tx.Amount})
+	}
+	sort.Slice(txs, func(i, j int) bool { return txs[i].TransactionID < txs[j].TransactionID })
+	return txs, nil
 }
 
-func (f FakeClient) WithTx(tx *sql.Tx) DBQuery {
+func (f MemDBQuery) WithTx(tx DBTX) DBQuery {
 	return f
 }
 
-type FakeDBTx struct{}
+type FakeDBTx struct {
+	db *MemDB
+}
 
 func (f FakeDBTx) ExecContext(context.Context, string, ...any) (sql.Result, error) {
 	return fakeResult{}, nil

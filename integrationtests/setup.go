@@ -106,7 +106,3 @@ func createStack(t *testing.T) *stack {
 
 	return &stack{psql: psqlContainer, psqlLedger: psqlLedger}
 }
-
-func initializeRelationalDB() {
-	//TODO
-}

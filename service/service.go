@@ -10,9 +10,9 @@ import (
 var versionFields = logrus.Fields{"buildDate": Date, "gitCommitSha": GitCommitHash}
 
 type Service struct {
-	logger *logrus.Entry
-	db     database.DB
-	server *HTTPService
+	logger   *logrus.Entry
+	dbClient database.DBClient
+	server   *HTTPService
 }
 
 func (s *Service) Start() {
@@ -23,7 +23,7 @@ func (s *Service) Start() {
 func (s *Service) Stop(sig os.Signal) {
 	s.logger.WithFields(logrus.Fields{"signal": sig}).Infof("stopping %v service", serviceName)
 
-	if err := s.db.Close(); err != nil {
+	if err := s.dbClient.DB().Close(); err != nil {
 		s.logger.WithFields(logrus.Fields{"error": err}).Error("error closing db")
 	}
 

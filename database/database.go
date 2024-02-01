@@ -5,12 +5,18 @@ import (
 	"database/sql"
 )
 
-type DB interface {
+type DBClient interface {
 	InitializeSchema(schemaPath string) error
+	CheckDatabaseExists(ctx context.Context, dbName string) (bool, error)
+	DB() DB
+	NewQuery() DBQuery
+	NewTransaction() (DBTX, error)
+	NewQueryWithTx() (DBQuery, error)
+}
+
+type DB interface {
 	Close() error
 	Ping() error
-	NewQuery() DBQuery
-	NewTransaction() (DBQuery, error)
 }
 
 type DBQuery interface {
@@ -23,5 +29,5 @@ type DBQuery interface {
 	GetUserByUsername(ctx context.Context, username string) (Account, error)
 	GetUsers(ctx context.Context) ([]Account, error)
 	GetUserTransactions(ctx context.Context) ([]GetUserTransactionsRow, error)
-	WithTx(tx *sql.Tx) DBQuery
+	WithTx(tx DBTX) DBQuery
 }

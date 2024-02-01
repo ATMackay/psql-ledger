@@ -81,6 +81,14 @@ func makeServiceAPIs(s *Service) *API {
 	})
 }
 
+// HandleAsync wraps the request handler in a go-routine spawner.
+// Increasing server throughput at the cost of losing deterministic execution.
+func HandleAsync(h http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		go h(w, r) // create go-routine to handle request - TODO implement and test
+	}
+}
+
 // StatusResponse contains status response fields.
 type StatusResponse struct {
 	Message string `json:"message,omitempty"`
@@ -112,7 +120,7 @@ func (s *Service) Health() http.HandlerFunc {
 		}
 		var failures = []string{}
 		var httpCode = http.StatusOK
-		if err := s.db.Ping(); err != nil {
+		if err := s.dbClient.DB().Ping(); err != nil {
 			failures = append(failures, fmt.Sprintf("DB: %v", err))
 			httpCode = http.StatusServiceUnavailable
 		}
@@ -136,11 +144,12 @@ const (
 	// This regex defines the regular expression for simple email formats
 	//
 	// e.g. user105 - VALID
+	//      u£er101 - INVALID
 	//
 	usernameRegex = "^[a-zA-Z0-9]+$"
 )
 
-func validAccountParams(c database.Account) error {
+func validAccountParams(c database.CreateAccountParams) error {
 	// validate email input
 	if c.Email.String != "" {
 		if err := isValidString(c.Email.String, emailRegex); err != nil {
@@ -149,7 +158,7 @@ func validAccountParams(c database.Account) error {
 	}
 	if c.Username != "" {
 		if err := isValidString(c.Username, usernameRegex); err != nil {
-			return fmt.Errorf("invalid user email: %v", err)
+			return fmt.Errorf("invalid username: %v", err)
 		}
 	}
 	return nil
@@ -174,7 +183,7 @@ func isValidString(input string, regex string) error {
 func (s *Service) Accounts() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Execute Query against PSQL
-		acc, err := s.db.NewQuery().GetUsers(context.Background())
+		acc, err := s.dbClient.NewQuery().GetUsers(context.Background())
 		if err != nil {
 			RespondWithError(w, http.StatusInternalServerError, err)
 			return
@@ -204,7 +213,7 @@ func (s *Service) AccountByIndex() http.HandlerFunc {
 		}
 
 		// Execute Query against PSQL
-		acc, err := s.db.NewQuery().GetUser(context.Background(), c.ID)
+		acc, err := s.dbClient.NewQuery().GetUser(context.Background(), c.ID)
 		if err != nil {
 			RespondWithError(w, http.StatusInternalServerError, err)
 			return
@@ -229,13 +238,13 @@ func (s *Service) AccountByUsername() http.HandlerFunc {
 		}
 
 		// validate inputs
-		if err := validAccountParams(c); err != nil {
+		if err := validAccountParams(database.CreateAccountParams{Username: c.Username}); err != nil {
 			RespondWithError(w, http.StatusBadRequest, err)
 			return
 		}
 
 		// Execute Query against PSQL
-		acc, err := s.db.NewQuery().GetUserByUsername(context.Background(), c.Username)
+		acc, err := s.dbClient.NewQuery().GetUserByUsername(context.Background(), c.Username)
 		if err != nil {
 			RespondWithError(w, http.StatusInternalServerError, err)
 			return
@@ -257,12 +266,12 @@ func (s *Service) AccountByEmail() http.HandlerFunc {
 			return
 		}
 		// validate inputs
-		if err := validAccountParams(c); err != nil {
+		if err := validAccountParams(database.CreateAccountParams{Email: c.Email}); err != nil {
 			RespondWithError(w, http.StatusBadRequest, err)
 			return
 		}
 		// Execute Query against PSQL
-		acc, err := s.db.NewQuery().GetUserByEmail(context.Background(), c.Email)
+		acc, err := s.dbClient.NewQuery().GetUserByEmail(context.Background(), c.Email)
 		if err != nil {
 			RespondWithError(w, http.StatusInternalServerError, err)
 			return
@@ -281,7 +290,7 @@ func (s *Service) AccountByEmail() http.HandlerFunc {
 // Once registered the new account will have a unique ID number.
 func (s *Service) CreateAccount() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var c database.Account
+		var c database.CreateAccountParams
 		if err := DecodeJSON(r.Body, &c); err != nil {
 			RespondWithError(w, http.StatusBadRequest, err)
 			return
@@ -294,7 +303,7 @@ func (s *Service) CreateAccount() http.HandlerFunc {
 		}
 
 		// Execute Query against PSQL
-		acc, err := s.db.NewQuery().CreateAccount(context.Background(), database.CreateAccountParams{
+		acc, err := s.dbClient.NewQuery().CreateAccount(context.Background(), database.CreateAccountParams{
 			Email:    c.Email,
 			Username: c.Username,
 			Balance:  0,
@@ -329,7 +338,7 @@ func (s *Service) TransactionByIndex() http.HandlerFunc {
 		}
 
 		// Execute Query against PSQL
-		tx, err := s.db.NewQuery().GetTx(context.Background(), txParams.ID)
+		tx, err := s.dbClient.NewQuery().GetTx(context.Background(), txParams.ID)
 		if err != nil {
 			RespondWithError(w, http.StatusInternalServerError, err)
 			return
@@ -357,7 +366,7 @@ func (s *Service) TxHistory() http.HandlerFunc {
 		}
 
 		// Execute Query against PSQL
-		txs, err := s.db.NewQuery().GetUserTransactions(context.Background())
+		txs, err := s.dbClient.NewQuery().GetUserTransactions(context.Background())
 		if err != nil {
 			RespondWithError(w, http.StatusInternalServerError, err)
 			return
@@ -406,17 +415,17 @@ func (s *Service) CreateTx() http.HandlerFunc {
 		}
 
 		// Check to and from account exist
-		if _, err := s.db.NewQuery().GetUser(context.Background(), txParams.FromAccount.Int64); err != nil {
+		if _, err := s.dbClient.NewQuery().GetUser(context.Background(), txParams.FromAccount.Int64); err != nil {
 			RespondWithError(w, http.StatusBadRequest, err)
 			return
 		}
-		if _, err := s.db.NewQuery().GetUser(context.Background(), txParams.ToAccount.Int64); err != nil {
+		if _, err := s.dbClient.NewQuery().GetUser(context.Background(), txParams.ToAccount.Int64); err != nil {
 			RespondWithError(w, http.StatusBadRequest, err)
 			return
 		}
 
 		// Execute Query against PSQL
-		tx, err := s.db.NewQuery().CreateTransaction(context.Background(), database.CreateTransactionParams{
+		tx, err := s.dbClient.NewQuery().CreateTransaction(context.Background(), database.CreateTransactionParams{
 			FromAccount: txParams.FromAccount,
 			ToAccount:   txParams.ToAccount,
 			Amount:      txParams.Amount,
