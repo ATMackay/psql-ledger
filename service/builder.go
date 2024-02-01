@@ -26,7 +26,7 @@ func BuildService(cfg Config) (*Service, error) {
 
 	db, err := makePostgresDB(config)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not make postgres DB: %v", err)
 	}
 
 	l.WithFields(logrus.Fields{
@@ -50,17 +50,17 @@ func makePostgresDB(config Config) (*database.PSQLClient, error) {
 		config.PostgresPassword,
 		config.PostgresDB))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("NewConnector err: %v", err)
 	}
 	dbClient, err := database.NewPSQLClient(config.PostgresDB, c)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("new PSQLClient err: %v", err)
 	}
 
 	// check DB exists
 	exists, err := dbClient.CheckDatabaseExists(context.Background(), config.PostgresDB)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("CheckDatabaseExists err: %v", err)
 	}
 
 	if !exists {
@@ -69,7 +69,7 @@ func makePostgresDB(config Config) (*database.PSQLClient, error) {
 	}
 
 	if err := dbClient.InitializeSchema(config.MigrationsPath); err != nil {
-		return nil, fmt.Errorf("DB migration up failed: %v", err)
+		return nil, fmt.Errorf("InitializeSchema failed: %v", err)
 	}
 	return dbClient, nil
 }

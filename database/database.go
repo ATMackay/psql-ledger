@@ -6,8 +6,9 @@ import (
 )
 
 type DBClient interface {
-	InitializeSchema(schemaPath string) error
 	CheckDatabaseExists(ctx context.Context, dbName string) (bool, error)
+	InitializeSchema(schemaPath string) error
+
 	DB() DB
 	NewQuery() DBQuery
 	NewTransaction() (DBTX, error)
