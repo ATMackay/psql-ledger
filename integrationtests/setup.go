@@ -2,6 +2,9 @@ package integrationtests
 
 import (
 	"context"
+	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"strconv"
 	"testing"
@@ -62,7 +65,7 @@ type stack struct {
 	psqlLedger *service.Service
 }
 
-func createStack(t *testing.T) *stack {
+func createStack(t testing.TB) *stack {
 	ctx := context.Background()
 
 	// start postgres container
@@ -105,4 +108,29 @@ func createStack(t *testing.T) *stack {
 	time.Sleep(50 * time.Millisecond) // TODO - code smell
 
 	return &stack{psql: psqlContainer, psqlLedger: psqlLedger}
+}
+
+func executeRequest(methodType, url string, body io.Reader, expectedCode int) (*http.Response, error) {
+	client := &http.Client{
+		Transport: &http.Transport{
+			DisableKeepAlives: true,
+		},
+	}
+	req, err := http.NewRequestWithContext(context.Background(), methodType, url, body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	response, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if g, w := response.StatusCode, expectedCode; g != w {
+		return nil, fmt.Errorf("unexpected response code, want %v got %v", w, g)
+	}
+	return response, nil
+
 }

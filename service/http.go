@@ -121,9 +121,9 @@ func logHTTPRequest(entry *logrus.Entry) func(http.Handler) http.Handler {
 				entry = entry.WithField("response", string(statusRecorder.response))
 			}
 			if httpCode > 399 {
-				entry.Warn()
+				entry.Warn(req.URL.Path)
 			} else {
-				entry.Print()
+				entry.Print(req.URL.Path)
 			}
 		})
 	}

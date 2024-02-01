@@ -13,7 +13,7 @@ type Format string
 type Level string
 
 const (
-	timeFormat = time.RFC822
+	timeFormat = time.RFC3339Nano
 
 	Debug Level = "debug"
 	Info  Level = "info"

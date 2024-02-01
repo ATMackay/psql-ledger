@@ -25,7 +25,7 @@ func NewPSQLClient(dbName string, c driver.Connector) (*PSQLClient, error) {
 
 	// Check connection
 	if err := db.Ping(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("db ping err: %v", err)
 	}
 
 	return &PSQLClient{
