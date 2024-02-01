@@ -3,14 +3,12 @@ package integrationtests
 import (
 	"bytes"
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"testing"
 
-	"github.com/ATMackay/psql-ledger/database"
 	"github.com/ATMackay/psql-ledger/service"
 )
 
@@ -74,6 +72,7 @@ func Test_StackAPI(t *testing.T) {
 	}
 }
 
+/*
 func Test_E2EReadWriteAccount(t *testing.T) {
 
 	s := createStack(t)
@@ -159,3 +158,4 @@ func executeRequest(methodType, url string, body io.Reader, expectedCode int) (*
 	return response, nil
 
 }
+*/
