@@ -83,6 +83,7 @@ func createStack(t testing.TB) *stack {
 	cfg.PostgresDB = postgresDB
 	cfg.MigrationsPath = "../sqlc/migrations"
 	cfg.LogLevel = "debug"
+	cfg.MaxThreads = 2
 
 	time.Sleep(500 * time.Millisecond) // TODO - code smell, fix
 
@@ -100,8 +101,6 @@ func createStack(t testing.TB) *stack {
 			t.Fatalf("failed to terminate container: %s", err)
 		}
 	})
-
-	// migrate DB - TODO
 
 	// Start HTTP service
 	psqlLedger.Start()

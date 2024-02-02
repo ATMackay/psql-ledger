@@ -127,10 +127,6 @@ func Test_E2EReadWriteAccount(t *testing.T) {
 	if g, w := responseData.Username, accParams.Username; g != w {
 		t.Fatalf("unexpected account username, want %v got %v", w, g)
 	}
-
-	//if g, w := responseData.Email, accParams.Email; g != w { - TODO fix
-	//	t.Fatalf("unexpected account email, want %v got %v", w, g)
-	//}
 }
 
 // Manual 'benchmark' tests
@@ -153,15 +149,21 @@ func Test_MultipleWrites(t *testing.T) {
 	email := "myemail@provider.com"
 
 	// Write a User Account to the DB
-	accParams := database.CreateAccountParams{Username: userName, Email: sql.NullString{String: email}}
-	accBytes, err := json.Marshal(accParams)
-	if err != nil {
-		t.Fatal(err)
+
+	// create input data
+	reqArray := [][]byte{}
+	for n := 0; n < 1000; n++ {
+		accParams := database.CreateAccountParams{Username: userName + fmt.Sprintf("%v", n), Email: sql.NullString{String: fmt.Sprintf("%v", n) + email}}
+		accBytes, err := json.Marshal(accParams)
+		if err != nil {
+			t.Fatal(err)
+		}
+		reqArray = append(reqArray, accBytes)
 	}
 
 	start := time.Now()
 	for n := 0; n < 1000; n++ {
-		response, err := executeRequest(http.MethodPost, serverURL+service.CreateAccount, bytes.NewReader(accBytes), http.StatusOK)
+		response, err := executeRequest(http.MethodPost, serverURL+service.CreateAccount, bytes.NewReader(reqArray[n]), http.StatusOK)
 		if err != nil {
 			t.Fatal(err)
 		}

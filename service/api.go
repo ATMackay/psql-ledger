@@ -81,11 +81,18 @@ func makeServiceAPIs(s *Service) *API {
 	})
 }
 
-// HandleAsync wraps the request handler in a go-routine spawner.
+// HandleAsync wraps the request handler in a go-routine spawner, limited to the number of threads
+// represented by the items in the threadpool channel.
 // Increasing server throughput at the cost of losing deterministic execution.
+//
+// NOTE, this should only be used with underling dbClient of type aggregatedClient
+// so that the number of active threads can be controlled.
 func HandleAsync(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		go h(w, r) // create go-routine to handle request - TODO implement and test
+		respWriter, req := &responseRecorder{ResponseWriter: w}, r.Clone(context.Background())
+		go func() {
+			h(respWriter, req) // create go-routine to handle request - TODO implement and test
+		}()
 	}
 }
 
@@ -232,7 +239,6 @@ func (s *Service) AccountByIndex() http.HandlerFunc {
 // AccountByUsername requests the account for supplied ID number
 func (s *Service) AccountByUsername() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-
 		var c database.Account
 		if err := DecodeJSON(r.Body, &c); err != nil {
 			RespondWithError(w, http.StatusBadRequest, err)
@@ -255,6 +261,7 @@ func (s *Service) AccountByUsername() http.HandlerFunc {
 		if err := RespondWithJSON(w, http.StatusOK, acc); err != nil {
 			s.logger.Error(err)
 		}
+
 	}
 
 }
@@ -371,6 +378,17 @@ func (s *Service) CreateAccount() http.HandlerFunc {
 			return
 		}
 
+		// Verify uniqueness
+		if u, _ := s.dbClient.NewQuery().GetUserByUsername(context.Background(), c.Username); u.ID != 0 {
+			RespondWithError(w, http.StatusBadRequest, fmt.Errorf("username already exists"))
+			return
+		}
+
+		if u, _ := s.dbClient.NewQuery().GetUserByEmail(context.Background(), c.Email); u.Email.Valid {
+			RespondWithError(w, http.StatusBadRequest, fmt.Errorf("email already exists"))
+			return
+		}
+
 		// Execute Query against PSQL
 		acc, err := s.dbClient.NewQuery().CreateAccount(context.Background(), database.CreateAccountParams{
 			Email:    c.Email,
@@ -438,6 +456,7 @@ func (s *Service) CreateTx() http.HandlerFunc {
 		if err := RespondWithJSON(w, http.StatusOK, tx); err != nil {
 			s.logger.Error(err)
 		}
+
 	}
 
 }

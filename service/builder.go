@@ -1,11 +1,9 @@
 package service
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/ATMackay/psql-ledger/database"
-	"github.com/lib/pq"
 	"github.com/sirupsen/logrus"
 )
 
@@ -26,7 +24,7 @@ func BuildService(cfg Config) (*Service, error) {
 		l.Warnf("no config parameters supplied: using default")
 	}
 
-	db, err := makePostgresDB(config)
+	db, err := makePostgresDBClient(l, config)
 	if err != nil {
 		return nil, fmt.Errorf("could not make postgres DB: %v", err)
 	}
@@ -40,43 +38,10 @@ func BuildService(cfg Config) (*Service, error) {
 		"DBName":   config.PostgresDB,
 	}).Info("connected to postgresDB")
 
-	return New(config.Port, l, db), nil
+	return New(config.Port, config.MaxThreads, l, db), nil
 }
 
-func makePostgresDB(config Config) (*database.PSQLClient, error) {
-
-	c, err := pq.NewConnector(fmt.Sprintf("host=%v port=%v user=%v password=%v dbname=%v sslmode=disable",
-		config.PostgresHost,
-		config.PostgresPort,
-		config.PostgresUser,
-		config.PostgresPassword,
-		config.PostgresDB))
-	if err != nil {
-		return nil, fmt.Errorf("NewConnector err: %v", err)
-	}
-	dbClient, err := database.NewPSQLClient(config.PostgresDB, c)
-	if err != nil {
-		return nil, fmt.Errorf("new PSQLClient err: %v", err)
-	}
-
-	// check DB exists
-	exists, err := dbClient.CheckDatabaseExists(context.Background(), config.PostgresDB)
-	if err != nil {
-		return nil, fmt.Errorf("CheckDatabaseExists err: %v", err)
-	}
-
-	if !exists {
-		// TODO - attempt DB creation again..
-		return nil, fmt.Errorf("DB %v does not exist", config.PostgresDB)
-	}
-
-	if err := dbClient.InitializeSchema(config.MigrationsPath); err != nil {
-		return nil, fmt.Errorf("InitializeSchema failed: %v", err)
-	}
-	return dbClient, nil
-}
-
-func New(port int, l *logrus.Entry, dbClient database.DBClient) *Service {
+func New(port, threads int, l *logrus.Entry, dbClient database.DBClient) *Service {
 	s := &Service{
 		logger:   l,
 		dbClient: dbClient,

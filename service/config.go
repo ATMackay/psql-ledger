@@ -17,6 +17,7 @@ type Config struct {
 	PostgresPassword string `yaml:"postgres_password"`
 	PostgresDB       string `yaml:"postgres_db"`
 	MigrationsPath   string `yaml:"migrations_path"`
+	MaxThreads       int    `yaml:"max_threads"`
 }
 
 var emptyConfig = Config{}
@@ -26,12 +27,13 @@ var DefaultConfig = Config{
 	LogLevel:         string(Info),
 	LogFormat:        string(Plain),
 	LogToFile:        false,
-	PostgresHost:     "localhost", // Default Postgres database configuration
-	PostgresPort:     5432,        //
-	PostgresUser:     "root",      //
-	PostgresPassword: "secret",    //
-	PostgresDB:       "bank",      //
-	MigrationsPath:   "../sqlc/migrations",
+	PostgresHost:     "localhost",          // Default Postgres database configuration
+	PostgresPort:     5432,                 //
+	PostgresUser:     "root",               //
+	PostgresPassword: "secret",             //
+	PostgresDB:       "bank",               //
+	MigrationsPath:   "../sqlc/migrations", // local project migrations directory
+	MaxThreads:       1,                    // Not multi-threaded by default
 }
 
 func isEmpty(c Config) bool {
@@ -84,6 +86,10 @@ func sanitizeConfig(config Config) (cfg Config, defaultUsed bool) {
 
 	if config.MigrationsPath == "" {
 		cfg.MigrationsPath = DefaultConfig.MigrationsPath
+	}
+
+	if config.MaxThreads == 0 {
+		cfg.MaxThreads = DefaultConfig.MaxThreads
 	}
 	return
 }
