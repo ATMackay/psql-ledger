@@ -96,6 +96,7 @@ type StatusResponse struct {
 	Service string `json:"service,omitempty"`
 }
 
+// Status implements the status request endpoint. Always returns OK.
 func (s *Service) Status() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := RespondWithJSON(w, http.StatusOK, &StatusResponse{Message: "OK", Version: FullVersion, Service: serviceName}); err != nil {
@@ -112,6 +113,7 @@ type HealthResponse struct {
 	Failures []string `json:"failures"`
 }
 
+// Health pings the connected DB instance.
 func (s *Service) Health() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		health := &HealthResponse{
@@ -141,7 +143,7 @@ const (
 	//      dhd$@xyz.com - INVALID
 	//
 	emailRegex = `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
-	// This regex defines the regular expression for simple email formats
+	// This regex defines the regular expression for simple username formats
 	//
 	// e.g. user105 - VALID
 	//      u£er101 - INVALID
@@ -177,7 +179,7 @@ func isValidString(input string, regex string) error {
 	return nil
 }
 
-// Read Requests
+// GET Requests
 
 // Accounts requests the full list if accounts stored in the DB - TODO paginate this request
 func (s *Service) Accounts() http.HandlerFunc {
@@ -284,45 +286,6 @@ func (s *Service) AccountByEmail() http.HandlerFunc {
 
 }
 
-// Write Requests
-
-// CreateAccount validates then writes a new account to the database
-// Once registered the new account will have a unique ID number.
-func (s *Service) CreateAccount() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		var c database.CreateAccountParams
-		if err := DecodeJSON(r.Body, &c); err != nil {
-			RespondWithError(w, http.StatusBadRequest, err)
-			return
-		}
-
-		// validate inputs
-		if err := validAccountParams(c); err != nil {
-			RespondWithError(w, http.StatusBadRequest, err)
-			return
-		}
-
-		// Execute Query against PSQL
-		acc, err := s.dbClient.NewQuery().CreateAccount(context.Background(), database.CreateAccountParams{
-			Email:    c.Email,
-			Username: c.Username,
-			Balance:  0,
-		})
-		if err != nil {
-			RespondWithError(w, http.StatusInternalServerError, err)
-			return
-		}
-
-		if err := RespondWithJSON(w, http.StatusOK, acc); err != nil {
-			s.logger.Error(err)
-		}
-
-	}
-
-}
-
-// Read Requests
-
 // TransactionByIndex requests the transaction for supplied ID number - TODO paginate these requests
 func (s *Service) TransactionByIndex() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -390,9 +353,45 @@ func (s *Service) TxHistory() http.HandlerFunc {
 
 }
 
-// Write Requests
+// POST Requests
 
-// CreateTx
+// CreateAccount validates then writes a new account to the database
+// Once registered the new account will have a unique ID number.
+func (s *Service) CreateAccount() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var c database.CreateAccountParams
+		if err := DecodeJSON(r.Body, &c); err != nil {
+			RespondWithError(w, http.StatusBadRequest, err)
+			return
+		}
+
+		// validate inputs
+		if err := validAccountParams(c); err != nil {
+			RespondWithError(w, http.StatusBadRequest, err)
+			return
+		}
+
+		// Execute Query against PSQL
+		acc, err := s.dbClient.NewQuery().CreateAccount(context.Background(), database.CreateAccountParams{
+			Email:    c.Email,
+			Username: c.Username,
+			Balance:  0,
+		})
+		if err != nil {
+			RespondWithError(w, http.StatusInternalServerError, err)
+			return
+		}
+
+		if err := RespondWithJSON(w, http.StatusOK, acc); err != nil {
+			s.logger.Error(err)
+		}
+
+	}
+
+}
+
+// CreateTx posts a new transaction to the DB. Transaction fields
+// are validated before the tx is registered
 func (s *Service) CreateTx() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var txParams database.CreateTransactionParams

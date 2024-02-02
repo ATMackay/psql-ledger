@@ -7,7 +7,7 @@ import (
 	"sort"
 )
 
-// To be used for testing both in and outside this package
+// To be used for testing both in and outside of this package
 
 var _ DBClient = (*MemDBClient)(nil)
 var _ DB = (*MemDB)(nil)

@@ -11,6 +11,8 @@ import (
 
 const serviceName = "psqlledger"
 
+// BuildService constructs a service with PostgreSQL DB client using the
+// supplied configuration parameters.
 func BuildService(cfg Config) (*Service, error) {
 
 	config, defaultUsed := sanitizeConfig(cfg)
@@ -64,7 +66,7 @@ func makePostgresDB(config Config) (*database.PSQLClient, error) {
 	}
 
 	if !exists {
-		// TODO - attempt DB creation again
+		// TODO - attempt DB creation again..
 		return nil, fmt.Errorf("DB %v does not exist", config.PostgresDB)
 	}
 
