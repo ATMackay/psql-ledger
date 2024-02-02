@@ -83,7 +83,7 @@ func createStack(t testing.TB) *stack {
 	cfg.PostgresDB = postgresDB
 	cfg.MigrationsPath = "../sqlc/migrations"
 	cfg.LogLevel = "debug"
-	cfg.MaxThreads = 2
+	cfg.MaxThreads = 1
 
 	time.Sleep(500 * time.Millisecond) // TODO - code smell, fix
 
