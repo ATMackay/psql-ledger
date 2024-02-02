@@ -5,6 +5,7 @@ import (
 	"database/sql"
 )
 
+// DBClient represents a database client.
 type DBClient interface {
 	CheckDatabaseExists(ctx context.Context, dbName string) (bool, error)
 	InitializeSchema(schemaPath string) error
@@ -15,11 +16,13 @@ type DBClient interface {
 	NewQueryWithTx() (DBQuery, error)
 }
 
+// DB represents basic database operations.
 type DB interface {
 	Close() error
 	Ping() error
 }
 
+// DBQuery is an interface for executing queries on the database.
 type DBQuery interface {
 	CreateAccount(ctx context.Context, arg CreateAccountParams) (Account, error)
 	CreateTransaction(ctx context.Context, arg CreateTransactionParams) (Transaction, error)
