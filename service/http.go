@@ -28,7 +28,7 @@ func NewHTTPService(port int, api *API, l *logrus.Entry) HTTPService {
 		server: &http.Server{
 			Addr:              fmt.Sprintf(":%d", port),
 			Handler:           handler,
-			ReadHeaderTimeout: 20 * time.Second,
+			ReadHeaderTimeout: 5 * time.Second,
 		},
 		logger: l,
 	}

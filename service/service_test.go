@@ -118,7 +118,7 @@ func Test_ServiceStartStop(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	service := New(8080, l, database.NewMemoryDBClient())
+	service := New(8080, 1, l, database.NewMemoryDBClient())
 
 	service.Start()
 
@@ -132,7 +132,7 @@ func Test_API(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	s := New(8080, log, database.NewMemoryDBClient())
+	s := New(8080, 1, log, database.NewMemoryDBClient())
 	s.Start()
 	t.Cleanup(func() {
 		s.Stop(os.Kill)
