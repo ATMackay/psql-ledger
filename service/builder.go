@@ -7,7 +7,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const serviceName = "psqlledger"
+const serviceName = "psql-ledger"
 
 // BuildService constructs a service with PostgreSQL DB client using the
 // supplied configuration parameters.
