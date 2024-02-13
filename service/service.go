@@ -9,7 +9,7 @@ import (
 
 var versionFields = logrus.Fields{"buildDate": Date, "gitCommitSha": GitCommitHash}
 
-// Service represents the main psqllgedger service boddy with
+// Service represents the main psqllgedger service body with
 // HTTP interface and DB connection.
 type Service struct {
 	logger   *logrus.Entry
