@@ -14,7 +14,7 @@ import (
 	"github.com/ATMackay/psql-ledger/service"
 )
 
-const serviceName = "psqlledger"
+const serviceName = "psql-ledger"
 
 func Test_StackAPI(t *testing.T) {
 
