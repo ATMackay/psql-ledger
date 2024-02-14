@@ -14,16 +14,16 @@ const (
 	Health = "/health"
 
 	Accounts             = "/accounts"
-	GetAccount           = "/account_by_index"
-	GetAccountByEmail    = "/account_by_email"
-	GetAccountByUsername = "/account_by_username"
+	GetAccount           = "/account-by-index"
+	GetAccountByEmail    = "/account_by-email"
+	GetAccountByUsername = "/account-by-username"
 
-	GetAccountTransactions = "/account_txs"
+	GetAccountTransactions = "/account-txs"
 
 	GetTransactionByIndex = "/tx"
 
-	CreateTx      = "/create_tx"
-	CreateAccount = "/create_account"
+	CreateTx      = "/create-tx"
+	CreateAccount = "/create-account"
 )
 
 func makeServiceAPIs(s *Service) *API {
