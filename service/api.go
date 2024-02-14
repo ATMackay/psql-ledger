@@ -15,7 +15,7 @@ const (
 
 	Accounts             = "/accounts"
 	GetAccount           = "/account-by-index"
-	GetAccountByEmail    = "/account_by-email"
+	GetAccountByEmail    = "/account-by-email"
 	GetAccountByUsername = "/account-by-username"
 
 	GetAccountTransactions = "/account-txs"
