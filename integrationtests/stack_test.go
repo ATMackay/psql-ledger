@@ -89,7 +89,7 @@ func Test_E2EReadWriteAccount(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	response, err = executeRequest(http.MethodPost, serverURL+service.CreateAccount, bytes.NewReader(b), http.StatusOK)
+	response, err = executeRequest(http.MethodPut, serverURL+service.CreateAccount, bytes.NewReader(b), http.StatusOK)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -102,7 +102,7 @@ func Test_E2EReadWriteAccount(t *testing.T) {
 	}
 
 	// Check user account exists
-	response, err = executeRequest(http.MethodGet, serverURL+service.GetAccount, bytes.NewReader(queryB), http.StatusOK)
+	response, err = executeRequest(http.MethodPost, serverURL+service.GetAccount, bytes.NewReader(queryB), http.StatusOK)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -163,7 +163,7 @@ func Test_MultipleWrites(t *testing.T) {
 
 	start := time.Now()
 	for n := 0; n < 1000; n++ {
-		response, err := executeRequest(http.MethodPost, serverURL+service.CreateAccount, bytes.NewReader(reqArray[n]), http.StatusOK)
+		response, err := executeRequest(http.MethodPut, serverURL+service.CreateAccount, bytes.NewReader(reqArray[n]), http.StatusOK)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -196,7 +196,7 @@ func Test_MultipleReads(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	response, err = executeRequest(http.MethodPost, serverURL+service.CreateAccount, bytes.NewReader(accBytes), http.StatusOK)
+	response, err = executeRequest(http.MethodPut, serverURL+service.CreateAccount, bytes.NewReader(accBytes), http.StatusOK)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -211,7 +211,7 @@ func Test_MultipleReads(t *testing.T) {
 	start := time.Now()
 	for n := 0; n < 1000; n++ {
 		// fetch user account
-		if _, err = executeRequest(http.MethodGet, serverURL+service.GetAccount, bytes.NewReader(queryB), http.StatusOK); err != nil {
+		if _, err = executeRequest(http.MethodPost, serverURL+service.GetAccount, bytes.NewReader(queryB), http.StatusOK); err != nil {
 			t.Fatal(err)
 		}
 	}

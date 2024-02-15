@@ -176,7 +176,7 @@ func Test_API(t *testing.T) {
 		{
 			"create-account",
 			CreateAccount,
-			http.MethodPost,
+			http.MethodPut,
 			func() []byte {
 				b, err := json.Marshal(testAccount)
 				if err != nil {
@@ -190,7 +190,7 @@ func Test_API(t *testing.T) {
 		{
 			"create-account-2",
 			CreateAccount,
-			http.MethodPost,
+			http.MethodPut,
 			func() []byte {
 				b, err := json.Marshal(testAccount2)
 				if err != nil {
@@ -207,7 +207,7 @@ func Test_API(t *testing.T) {
 		{
 			"create-transaction",
 			CreateTx,
-			http.MethodPost,
+			http.MethodPut,
 			func() []byte {
 				b, err := json.Marshal(testTx)
 				if err != nil {
@@ -229,7 +229,7 @@ func Test_API(t *testing.T) {
 		{
 			"account-by-index",
 			GetAccount,
-			http.MethodGet,
+			http.MethodPost,
 			func() []byte {
 				accParams := database.Account{ID: 1}
 				b, err := json.Marshal(accParams)
@@ -244,7 +244,7 @@ func Test_API(t *testing.T) {
 		{
 			"account-by-email",
 			GetAccountByEmail,
-			http.MethodGet,
+			http.MethodPost,
 			func() []byte {
 				accParams := &database.Account{Email: sql.NullString{String: "myname@emailprovider.com"}}
 				b, err := json.Marshal(accParams)
@@ -259,7 +259,7 @@ func Test_API(t *testing.T) {
 		{
 			"account-by-username",
 			GetAccountByUsername,
-			http.MethodGet,
+			http.MethodPost,
 			func() []byte {
 				accParams := database.Account{Username: "myusername"}
 				b, err := json.Marshal(accParams)
@@ -274,7 +274,7 @@ func Test_API(t *testing.T) {
 		{
 			"transaction-by-id",
 			GetTransactionByIndex,
-			http.MethodGet,
+			http.MethodPost,
 			func() []byte {
 				accParams := database.Transaction{ID: 1}
 				b, err := json.Marshal(accParams)
@@ -289,7 +289,7 @@ func Test_API(t *testing.T) {
 		{
 			"account-txs",
 			GetAccountTransactions,
-			http.MethodGet,
+			http.MethodPost,
 			func() []byte {
 				accParams := database.Account{ID: 1}
 				b, err := json.Marshal(accParams)
