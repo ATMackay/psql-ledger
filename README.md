@@ -25,20 +25,20 @@ Start service
 ~/go/src/github.com/ATMackay/psql-ledger$ make run
 ```
 
-Use a new terminal to interact with the application. Healthcheck the stack
+Use a new terminal to interact with the application. Healthcheck the stack (an empty failures list indicates that the service is healthy and ready to take requests).
 ```
 ~$ curl localhost:8080/health
-{"version":"v0.1.0-17379d11","service":"psqlledger","failures":[]}
+{"version":"v0.1.0-17379d11","service":"psql-ledger","failures":[]}
 ```
 
 Create an account
 ```
-~$ curl -X POST -H "Content-Type: application/json" -d '{"username": "exampleuser", "email": {"String": "user@example.com", "Valid": true} }' http://localhost:8080/create-account
+~$ curl -X PUT -H "Content-Type: application/json" -d '{"username": "exampleuser", "email": {"String": "user@example.com", "Valid": true} }' http://localhost:8080/create-account
 {"id":1,"username":"exampleuser","balance":0,"email":{"String":"user@example.com","Valid":true},"created_at":{"Time":"2024-02-01T13:12:27.782459Z","Valid":true}}
 ```
 
 Fetch create account details (by-index)
 ```
-~$ curl -X GET -H "Content-Type: application/json" -d '{"id":1}' http://localhost:8080/account-by-index
+~$ curl -X POST -H "Content-Type: application/json" -d '{"id":1}' http://localhost:8080/account-by-index
 {"id":1,"username":"exampleuser","balance":0,"email":{"String":"user@example.com","Valid":true},"created_at":{"Time":"2024-02-01T13:12:27.782459Z","Valid":true}}
 ```
