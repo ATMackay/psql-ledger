@@ -46,37 +46,37 @@ func makeServiceAPIs(s *Service) *API {
 		EndPoint{
 			Path:       GetAccount,
 			Handler:    s.AccountByIndex(),
-			MethodType: http.MethodGet,
+			MethodType: http.MethodPost,
 		},
 		EndPoint{
 			Path:       GetAccountByEmail,
 			Handler:    s.AccountByEmail(),
-			MethodType: http.MethodGet,
+			MethodType: http.MethodPost,
 		},
 		EndPoint{
 			Path:       GetAccountByUsername,
 			Handler:    s.AccountByUsername(),
-			MethodType: http.MethodGet,
+			MethodType: http.MethodPost,
 		},
 		EndPoint{
 			Path:       GetAccountTransactions,
 			Handler:    s.TxHistory(),
-			MethodType: http.MethodGet,
+			MethodType: http.MethodPost,
 		},
 		EndPoint{
 			Path:       GetTransactionByIndex,
 			Handler:    s.TransactionByIndex(),
-			MethodType: http.MethodGet,
+			MethodType: http.MethodPost,
 		},
 		EndPoint{
 			Path:       CreateTx,
 			Handler:    s.CreateTx(),
-			MethodType: http.MethodPost,
+			MethodType: http.MethodPut,
 		},
 		EndPoint{
 			Path:       CreateAccount,
 			Handler:    s.CreateAccount(),
-			MethodType: http.MethodPost,
+			MethodType: http.MethodPut,
 		},
 	})
 }
