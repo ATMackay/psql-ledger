@@ -3,8 +3,9 @@ module github.com/ATMackay/psql-ledger
 go 1.21.6
 
 require (
-	github.com/gorilla/mux v1.8.1
+	github.com/golang-migrate/migrate v3.5.4+incompatible
 	github.com/jackc/pgx/v4 v4.18.1
+	github.com/julienschmidt/httprouter v1.3.0
 	github.com/lib/pq v1.10.9
 	github.com/sirupsen/logrus v1.9.3
 	github.com/testcontainers/testcontainers-go v0.27.0
@@ -27,7 +28,6 @@ require (
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/golang-migrate/migrate v3.5.4+incompatible // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/google/uuid v1.4.0 // indirect
 	github.com/jackc/chunkreader/v2 v2.0.1 // indirect
