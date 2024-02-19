@@ -96,7 +96,6 @@ func (a *API) Routes(l *logrus.Entry) *httprouter.Router {
 
 // logHTTPRequest provides logging middleware. It surfaces low level request/response data from the http server.
 func logHTTPRequest(entry *logrus.Entry, h http.Handler) http.Handler {
-	entry = entry
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		if entry == nil {
 			return
