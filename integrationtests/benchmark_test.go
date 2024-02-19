@@ -4,23 +4,26 @@ import (
 	"bytes"
 	"database/sql"
 	"encoding/json"
-	"fmt"
+	"math/rand"
 	"net/http"
+	"strconv"
 	"testing"
+	"time"
 
 	"github.com/ATMackay/psql-ledger/database"
 	"github.com/ATMackay/psql-ledger/service"
 )
 
-// TODO - fix
-
+// These tests require a locally running stack
+//
+// make postgresup
+// make createdb
+// make run
 func BenchmarkAccountWrite(b *testing.B) {
 
-	s := createStack(b)
-
-	serverURL := fmt.Sprintf("http://0.0.0.0%v", s.psqlLedger.Server().Addr())
-
 	// Setup
+
+	serverURL := "http://0.0.0.0:8080"
 
 	// Healthcheck the stack
 	response, err := executeRequest(http.MethodGet, serverURL+service.Health, nil, http.StatusOK)
@@ -33,14 +36,17 @@ func BenchmarkAccountWrite(b *testing.B) {
 	email := "myemail@provider.com"
 
 	// Write a User Account to the DB
-	accParams := database.CreateAccountParams{Username: userName, Email: sql.NullString{String: email}}
-	accBytes, err := json.Marshal(accParams)
-	if err != nil {
-		b.Fatal(err)
-	}
+	rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	for n := 0; n < b.N; n++ {
-		response, err := executeRequest(http.MethodPost, serverURL+service.CreateAccount, bytes.NewReader(accBytes), http.StatusOK)
+		r := rand.Int63()
+		id := strconv.FormatInt(r, 10)
+		accParams := database.CreateAccountParams{Username: userName + id, Email: sql.NullString{String: id + email}}
+		accBytes, err := json.Marshal(accParams)
+		if err != nil {
+			b.Fatal(err)
+		}
+		response, err := executeRequest(http.MethodPut, serverURL+service.CreateAccount, bytes.NewReader(accBytes), http.StatusOK)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -51,11 +57,9 @@ func BenchmarkAccountWrite(b *testing.B) {
 
 func BenchmarkAccountRead(b *testing.B) {
 
-	s := createStack(b)
-
-	serverURL := fmt.Sprintf("http://0.0.0.0%v", s.psqlLedger.Server().Addr())
-
 	// Setup
+
+	serverURL := "http://0.0.0.0:8080"
 
 	// Healthcheck the stack
 	response, err := executeRequest(http.MethodGet, serverURL+service.Health, nil, http.StatusOK)
@@ -73,11 +77,13 @@ func BenchmarkAccountRead(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	response, err = executeRequest(http.MethodPost, serverURL+service.CreateAccount, bytes.NewReader(accBytes), http.StatusOK)
+	response, err = executeRequest(http.MethodPut, serverURL+service.CreateAccount, bytes.NewReader(accBytes), http.StatusOK)
 	if err != nil {
-		b.Fatal(err)
+		b.Logf("account may already exist: %v", err)
 	}
-	response.Body.Close()
+	if response != nil {
+		response.Body.Close()
+	}
 
 	queryData := database.Account{ID: 1}
 	queryB, err := json.Marshal(queryData)
@@ -87,7 +93,7 @@ func BenchmarkAccountRead(b *testing.B) {
 
 	for n := 0; n < b.N; n++ {
 		// fetch user account
-		if _, err = executeRequest(http.MethodGet, serverURL+service.GetAccount, bytes.NewReader(queryB), http.StatusOK); err != nil {
+		if _, err = executeRequest(http.MethodPost, serverURL+service.GetAccount, bytes.NewReader(queryB), http.StatusOK); err != nil {
 			b.Fatal(err)
 		}
 	}

@@ -128,7 +128,7 @@ func executeRequest(methodType, url string, body io.Reader, expectedCode int) (*
 	}
 
 	if g, w := response.StatusCode, expectedCode; g != w {
-		return nil, fmt.Errorf("unexpected response code, want %v got %v", w, g)
+		return response, fmt.Errorf("unexpected response code, want %v got %v", w, g)
 	}
 	return response, nil
 
