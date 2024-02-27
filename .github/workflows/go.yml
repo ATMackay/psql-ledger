@@ -11,7 +11,7 @@ on:
 
 jobs:
 
-  build-test:
+  unit-test:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
@@ -29,8 +29,18 @@ jobs:
 
     - name: database-test
       run: go test -v -cover ./database/...
+
+  integration-test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
     
-    - name: integration-test
+    - name: test-stack
       run: go test -v -cover ./integrationtests/...
 
   golangci:

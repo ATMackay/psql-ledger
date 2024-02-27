@@ -7,7 +7,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const serviceName = "psql-ledger"
+const ServiceName = "psql-ledger"
 
 // BuildService constructs a service with PostgreSQL DB client using the
 // supplied configuration parameters.
@@ -15,7 +15,7 @@ func BuildService(cfg Config) (*Service, error) {
 
 	config, defaultUsed := sanitizeConfig(cfg)
 
-	l, err := NewLogger(Level(config.LogLevel), Format(config.LogFormat), config.LogToFile, serviceName)
+	l, err := NewLogger(Level(config.LogLevel), Format(config.LogFormat), config.LogToFile, ServiceName)
 	if err != nil {
 		return nil, err
 	}
@@ -46,7 +46,7 @@ func New(port, threads int, l *logrus.Entry, dbClient database.DBClient) *Servic
 		logger:   l,
 		dbClient: dbClient,
 	}
-	h := NewHTTPService(port, makeServiceAPIs(s), l)
+	h := NewHTTPService(port, makeServiceAPIs(dbClient), l)
 	s.server = &h
 	return s
 }

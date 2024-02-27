@@ -14,8 +14,6 @@ import (
 	"github.com/ATMackay/psql-ledger/service"
 )
 
-const serviceName = "psql-ledger"
-
 func Test_StackAPI(t *testing.T) {
 
 	stack := createStack(t)
@@ -29,16 +27,16 @@ func Test_StackAPI(t *testing.T) {
 	}{
 		{
 			"status",
-			service.Status,
+			service.StatusEndPnt,
 			http.MethodGet,
-			&service.StatusResponse{Message: "OK", Version: service.FullVersion, Service: serviceName},
+			&service.StatusResponse{Message: "OK", Version: service.FullVersion, Service: service.ServiceName},
 			http.StatusOK,
 		},
 		{
 			"health",
-			service.Health,
+			service.HealthEndPnt,
 			http.MethodGet,
-			&service.HealthResponse{Version: service.FullVersion, Service: serviceName, Failures: []string{}},
+			&service.HealthResponse{Version: service.FullVersion, Service: service.ServiceName, Failures: []string{}},
 			http.StatusOK,
 		},
 	}
@@ -73,7 +71,7 @@ func Test_E2EReadWriteAccount(t *testing.T) {
 	serverURL := fmt.Sprintf("http://0.0.0.0%v", s.psqlLedger.Server().Addr())
 
 	// Healthcheck the stack
-	response, err := executeRequest(http.MethodGet, serverURL+service.Health, nil, http.StatusOK)
+	response, err := executeRequest(http.MethodGet, serverURL+service.HealthEndPnt, nil, http.StatusOK)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,7 +87,7 @@ func Test_E2EReadWriteAccount(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	response, err = executeRequest(http.MethodPut, serverURL+service.CreateAccount, bytes.NewReader(b), http.StatusOK)
+	response, err = executeRequest(http.MethodPut, serverURL+service.CreateAccountEndPnt, bytes.NewReader(b), http.StatusOK)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -102,7 +100,7 @@ func Test_E2EReadWriteAccount(t *testing.T) {
 	}
 
 	// Check user account exists
-	response, err = executeRequest(http.MethodPost, serverURL+service.GetAccount, bytes.NewReader(queryB), http.StatusOK)
+	response, err = executeRequest(http.MethodPost, serverURL+service.GetAccountEndPnt, bytes.NewReader(queryB), http.StatusOK)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -134,12 +132,14 @@ func Test_E2EReadWriteAccount(t *testing.T) {
 func Test_MultipleWrites(t *testing.T) {
 	s := createStack(t)
 
+	N := 1000 // increase for better test accuracy
+
 	serverURL := fmt.Sprintf("http://0.0.0.0%v", s.psqlLedger.Server().Addr())
 
 	// Setup
 
 	// Healthcheck the stack
-	response, err := executeRequest(http.MethodGet, serverURL+service.Health, nil, http.StatusOK)
+	response, err := executeRequest(http.MethodGet, serverURL+service.HealthEndPnt, nil, http.StatusOK)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,7 +152,7 @@ func Test_MultipleWrites(t *testing.T) {
 
 	// create input data
 	reqArray := [][]byte{}
-	for n := 0; n < 1000; n++ {
+	for n := 0; n < N; n++ {
 		accParams := database.CreateAccountParams{Username: userName + fmt.Sprintf("%v", n), Email: sql.NullString{String: fmt.Sprintf("%v", n) + email}}
 		accBytes, err := json.Marshal(accParams)
 		if err != nil {
@@ -162,26 +162,28 @@ func Test_MultipleWrites(t *testing.T) {
 	}
 
 	start := time.Now()
-	for n := 0; n < 1000; n++ {
-		response, err := executeRequest(http.MethodPut, serverURL+service.CreateAccount, bytes.NewReader(reqArray[n]), http.StatusOK)
+	for n := 0; n < N; n++ {
+		response, err := executeRequest(http.MethodPut, serverURL+service.CreateAccountEndPnt, bytes.NewReader(reqArray[n]), http.StatusOK)
 		if err != nil {
 			t.Fatal(err)
 		}
 		response.Body.Close()
 	}
 	elapsed := time.Since(start)
-	fmt.Printf("completed 1000 writes in %v milliseconds (%v/s)", elapsed, (1000.0 * 1000.0 / float64(elapsed.Milliseconds())))
+	fmt.Printf("completed %d writes in %v milliseconds (%v/s)", N, elapsed, (float64(N) * 1000.0 / float64(elapsed.Milliseconds())))
 }
 
 func Test_MultipleReads(t *testing.T) {
 	s := createStack(t)
+
+	N := 100 // increase for better test accuracy
 
 	serverURL := fmt.Sprintf("http://0.0.0.0%v", s.psqlLedger.Server().Addr())
 
 	// Setup
 
 	// Healthcheck the stack
-	response, err := executeRequest(http.MethodGet, serverURL+service.Health, nil, http.StatusOK)
+	response, err := executeRequest(http.MethodGet, serverURL+service.HealthEndPnt, nil, http.StatusOK)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -196,7 +198,7 @@ func Test_MultipleReads(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	response, err = executeRequest(http.MethodPut, serverURL+service.CreateAccount, bytes.NewReader(accBytes), http.StatusOK)
+	response, err = executeRequest(http.MethodPut, serverURL+service.CreateAccountEndPnt, bytes.NewReader(accBytes), http.StatusOK)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -209,12 +211,12 @@ func Test_MultipleReads(t *testing.T) {
 	}
 
 	start := time.Now()
-	for n := 0; n < 1000; n++ {
+	for n := 0; n < N; n++ {
 		// fetch user account
-		if _, err = executeRequest(http.MethodPost, serverURL+service.GetAccount, bytes.NewReader(queryB), http.StatusOK); err != nil {
+		if _, err = executeRequest(http.MethodPost, serverURL+service.GetAccountEndPnt, bytes.NewReader(queryB), http.StatusOK); err != nil {
 			t.Fatal(err)
 		}
 	}
 	elapsed := time.Since(start)
-	fmt.Printf("completed 1000 writes in %v milliseconds (%v/s)", elapsed, (1000.0 * 1000.0 / float64(elapsed.Milliseconds())))
+	fmt.Printf("completed %d writes in %v milliseconds (%v/s)", N, elapsed, (float64(N) * 1000.0 / float64(elapsed.Milliseconds())))
 }

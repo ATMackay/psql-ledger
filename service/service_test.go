@@ -156,18 +156,18 @@ func Test_API(t *testing.T) {
 		//
 		{
 			"status",
-			Status,
+			StatusEndPnt,
 			http.MethodGet,
 			func() []byte { return nil },
-			&StatusResponse{Message: "OK", Version: FullVersion, Service: serviceName},
+			&StatusResponse{Message: "OK", Version: FullVersion, Service: ServiceName},
 			http.StatusOK,
 		},
 		{
 			"health",
-			Health,
+			HealthEndPnt,
 			http.MethodGet,
 			func() []byte { return nil },
-			&HealthResponse{Version: FullVersion, Service: serviceName, Failures: []string{}},
+			&HealthResponse{Version: FullVersion, Service: ServiceName, Failures: []string{}},
 			http.StatusOK,
 		},
 		//
@@ -175,7 +175,7 @@ func Test_API(t *testing.T) {
 		//
 		{
 			"create-account",
-			CreateAccount,
+			CreateAccountEndPnt,
 			http.MethodPut,
 			func() []byte {
 				b, err := json.Marshal(testAccount)
@@ -189,7 +189,7 @@ func Test_API(t *testing.T) {
 		},
 		{
 			"create-account-2",
-			CreateAccount,
+			CreateAccountEndPnt,
 			http.MethodPut,
 			func() []byte {
 				b, err := json.Marshal(testAccount2)
@@ -206,7 +206,7 @@ func Test_API(t *testing.T) {
 		//
 		{
 			"create-transaction",
-			CreateTx,
+			CreateTxEndPnt,
 			http.MethodPut,
 			func() []byte {
 				b, err := json.Marshal(testTx)
@@ -220,7 +220,7 @@ func Test_API(t *testing.T) {
 		},
 		{
 			"accounts",
-			Accounts,
+			AccountsEndPnt,
 			http.MethodGet,
 			func() []byte { return nil },
 			&[]database.Account{testAccount, testAccount2},
@@ -228,7 +228,7 @@ func Test_API(t *testing.T) {
 		},
 		{
 			"account-by-index",
-			GetAccount,
+			GetAccountEndPnt,
 			http.MethodPost,
 			func() []byte {
 				accParams := database.Account{ID: 1}
@@ -243,7 +243,7 @@ func Test_API(t *testing.T) {
 		},
 		{
 			"account-by-email",
-			GetAccountByEmail,
+			GetAccountByEmailEndPnt,
 			http.MethodPost,
 			func() []byte {
 				accParams := &database.Account{Email: sql.NullString{String: "myname@emailprovider.com"}}
@@ -258,7 +258,7 @@ func Test_API(t *testing.T) {
 		},
 		{
 			"account-by-username",
-			GetAccountByUsername,
+			GetAccountByUsernameEndPnt,
 			http.MethodPost,
 			func() []byte {
 				accParams := database.Account{Username: "myusername"}
@@ -273,7 +273,7 @@ func Test_API(t *testing.T) {
 		},
 		{
 			"transaction-by-id",
-			GetTransactionByIndex,
+			GetTransactionByIndexEndPnt,
 			http.MethodPost,
 			func() []byte {
 				accParams := database.Transaction{ID: 1}
@@ -288,7 +288,7 @@ func Test_API(t *testing.T) {
 		},
 		{
 			"account-txs",
-			GetAccountTransactions,
+			GetAccountTransactionsEndPnt,
 			http.MethodPost,
 			func() []byte {
 				accParams := database.Account{ID: 1}
@@ -300,6 +300,84 @@ func Test_API(t *testing.T) {
 			},
 			&[]database.GetUserTransactionsRow{database.GetUserTransactionsRow{TransactionID: testTx.ID, FromAccountID: testTx.FromAccount, ToAccountID: testTx.ToAccount, Amount: testTx.Amount}},
 			http.StatusOK,
+		},
+		//
+		// CLIENT ERRORS
+		//
+		{
+			"account-by-index-not-found",
+			GetAccountEndPnt,
+			http.MethodPost,
+			func() []byte {
+				accParams := database.Account{ID: 5}
+				b, err := json.Marshal(accParams)
+				if err != nil {
+					panic(err)
+				}
+				return b
+			},
+			map[string]string{"error": database.ErrNotFound.Error()},
+			http.StatusNotFound,
+		},
+		{
+			"account-by-email-not-found",
+			GetAccountByEmailEndPnt,
+			http.MethodPost,
+			func() []byte {
+				accParams := &database.Account{Email: sql.NullString{String: "notarealuser@emailprovider.com"}}
+				b, err := json.Marshal(accParams)
+				if err != nil {
+					panic(err)
+				}
+				return b
+			},
+			map[string]string{"error": database.ErrNotFound.Error()},
+			http.StatusNotFound,
+		},
+		{
+			"account-by-username-not-found",
+			GetAccountByUsernameEndPnt,
+			http.MethodPost,
+			func() []byte {
+				accParams := database.Account{Username: "notarealuser"}
+				b, err := json.Marshal(accParams)
+				if err != nil {
+					panic(err)
+				}
+				return b
+			},
+			map[string]string{"error": database.ErrNotFound.Error()},
+			http.StatusNotFound,
+		},
+		{
+			"transaction-by-id-err-zero-index",
+			GetTransactionByIndexEndPnt,
+			http.MethodPost,
+			func() []byte {
+				accParams := database.Transaction{ID: 0}
+				b, err := json.Marshal(accParams)
+				if err != nil {
+					panic(err)
+				}
+				return b
+			},
+			map[string]string{"error": "cannot supply account ID = 0"},
+			http.StatusBadRequest,
+		},
+		{
+			"transaction-by-id-err-wrong-index",
+			GetTransactionByIndexEndPnt,
+			http.MethodPost,
+			func() []byte {
+				accParams := database.Transaction{ID: 5}
+				b, err := json.Marshal(accParams)
+				if err != nil {
+					panic(err)
+				}
+				return b
+			},
+			map[string]string{"error": database.ErrNotFound.Error()},
+			http.StatusNotFound,
 		},
 	}
 
@@ -324,10 +402,13 @@ func Test_API(t *testing.T) {
 		if g, w := response.StatusCode, tt.expectedCode; g != w {
 			t.Errorf("%v unexpected response code, want %v got %v", tt.name, w, g)
 		}
-		expectedJSON, _ := json.Marshal(tt.expectedResponse)
+		if tt.expectedResponse != nil {
 
-		if g, w := b, expectedJSON; !bytes.Equal(g, w) {
-			t.Errorf("%v unexpected response, want %s, got %s", tt.name, w, g)
+			expectedJSON, _ := json.Marshal(tt.expectedResponse)
+
+			if g, w := b, expectedJSON; !bytes.Equal(g, w) {
+				t.Errorf("%v unexpected response, want %s, got %s", tt.name, w, g)
+			}
 		}
 
 	}
