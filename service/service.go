@@ -18,12 +18,12 @@ type Service struct {
 }
 
 func (s *Service) Start() {
-	s.logger.WithFields(versionFields).Infof("starting %v service", serviceName)
+	s.logger.WithFields(versionFields).Infof("starting %v service", ServiceName)
 	s.server.Start()
 }
 
 func (s *Service) Stop(sig os.Signal) {
-	s.logger.WithFields(logrus.Fields{"signal": sig}).Infof("stopping %v service", serviceName)
+	s.logger.WithFields(logrus.Fields{"signal": sig}).Infof("stopping %v service", ServiceName)
 
 	if err := s.dbClient.DB().Close(); err != nil {
 		s.logger.WithFields(logrus.Fields{"error": err}).Error("error closing db")

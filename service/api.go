@@ -10,91 +10,78 @@ import (
 )
 
 const (
-	Status = "/status"
-	Health = "/health"
+	StatusEndPnt = "/status"
+	HealthEndPnt = "/health"
 
-	Accounts             = "/accounts"
-	GetAccount           = "/account-by-index"
-	GetAccountByEmail    = "/account-by-email"
-	GetAccountByUsername = "/account-by-username"
+	AccountsEndPnt             = "/accounts"
+	GetAccountEndPnt           = "/account-by-index"
+	GetAccountByEmailEndPnt    = "/account-by-email"
+	GetAccountByUsernameEndPnt = "/account-by-username"
 
-	GetAccountTransactions = "/account-txs"
+	GetAccountTransactionsEndPnt = "/account-txs"
 
-	GetTransactionByIndex = "/tx"
+	GetTransactionByIndexEndPnt = "/tx"
 
-	CreateTx      = "/create-tx"
-	CreateAccount = "/create-account"
+	CreateTxEndPnt      = "/create-tx"
+	CreateAccountEndPnt = "/create-account"
 )
 
-func makeServiceAPIs(s *Service) *API {
+func makeServiceAPIs(dbClient database.DBClient) *API {
 	return MakeAPI([]EndPoint{
 		EndPoint{
-			Path:       Status,
-			Handler:    s.Status(),
+			Path:       StatusEndPnt,
+			Handler:    Status(),
 			MethodType: http.MethodGet,
 		},
 		EndPoint{
-			Path:       Health,
-			Handler:    s.Health(),
+			Path:       HealthEndPnt,
+			Handler:    Health(dbClient),
 			MethodType: http.MethodGet,
 		},
 		EndPoint{
-			Path:       Accounts,
-			Handler:    s.Accounts(),
+			Path:       AccountsEndPnt,
+			Handler:    Accounts(dbClient),
 			MethodType: http.MethodGet,
 		},
 		EndPoint{
-			Path:       GetAccount,
-			Handler:    s.AccountByIndex(),
+			Path:       GetAccountEndPnt,
+			Handler:    AccountByIndex(dbClient),
 			MethodType: http.MethodPost,
 		},
 		EndPoint{
-			Path:       GetAccountByEmail,
-			Handler:    s.AccountByEmail(),
+			Path:       GetAccountByEmailEndPnt,
+			Handler:    AccountByEmail(dbClient),
 			MethodType: http.MethodPost,
 		},
 		EndPoint{
-			Path:       GetAccountByUsername,
-			Handler:    s.AccountByUsername(),
+			Path:       GetAccountByUsernameEndPnt,
+			Handler:    AccountByUsername(dbClient),
 			MethodType: http.MethodPost,
 		},
 		EndPoint{
-			Path:       GetAccountTransactions,
-			Handler:    s.TxHistory(),
+			Path:       GetAccountTransactionsEndPnt,
+			Handler:    TxHistory(dbClient),
 			MethodType: http.MethodPost,
 		},
 		EndPoint{
-			Path:       GetTransactionByIndex,
-			Handler:    s.TransactionByIndex(),
+			Path:       GetTransactionByIndexEndPnt,
+			Handler:    TransactionByIndex(dbClient),
 			MethodType: http.MethodPost,
 		},
 		EndPoint{
-			Path:       CreateTx,
-			Handler:    s.CreateTx(),
+			Path:       CreateTxEndPnt,
+			Handler:    CreateTx(dbClient),
 			MethodType: http.MethodPut,
 		},
 		EndPoint{
-			Path:       CreateAccount,
-			Handler:    s.CreateAccount(),
+			Path:       CreateAccountEndPnt,
+			Handler:    CreateAccount(dbClient),
 			MethodType: http.MethodPut,
 		},
 	})
 }
 
-// HandleAsync wraps the request handler in a go-routine spawner, limited to the number of threads
-// represented by the items in the threadpool channel.
-// Increasing server throughput at the cost of losing deterministic execution.
-//
-// NOTE, this should only be used with underling dbClient of type aggregatedClient
-// so that the number of active threads can be controlled.
-func HandleAsync(h http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		respWriter, req := &responseRecorder{ResponseWriter: w}, r.Clone(context.Background())
-		go func() {
-			h(respWriter, req) // create go-routine to handle request - TODO implement and test
-		}()
-	}
-}
+// GET REQUESTS
 
 // StatusResponse contains status response fields.
 type StatusResponse struct {
@@ -104,10 +91,10 @@ type StatusResponse struct {
 }
 
 // Status implements the status request endpoint. Always returns OK.
-func (s *Service) Status() http.HandlerFunc {
+func Status() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if err := RespondWithJSON(w, http.StatusOK, &StatusResponse{Message: "OK", Version: FullVersion, Service: serviceName}); err != nil {
-			s.logger.Error(err)
+		if err := RespondWithJSON(w, http.StatusOK, &StatusResponse{Message: "OK", Version: FullVersion, Service: ServiceName}); err != nil {
+			RespondWithError(w, http.StatusInternalServerError, err)
 		}
 	}
 
@@ -121,15 +108,15 @@ type HealthResponse struct {
 }
 
 // Health pings the connected DB instance.
-func (s *Service) Health() http.HandlerFunc {
+func Health(dbClient database.DBClient) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		health := &HealthResponse{
-			Service: serviceName,
+			Service: ServiceName,
 			Version: FullVersion,
 		}
 		var failures = []string{}
 		var httpCode = http.StatusOK
-		if err := s.dbClient.DB().Ping(); err != nil {
+		if err := dbClient.DB().Ping(); err != nil {
 			failures = append(failures, fmt.Sprintf("DB: %v", err))
 			httpCode = http.StatusServiceUnavailable
 		}
@@ -137,7 +124,7 @@ func (s *Service) Health() http.HandlerFunc {
 		health.Failures = failures
 
 		if err := RespondWithJSON(w, httpCode, health); err != nil {
-			s.logger.Error(err)
+			RespondWithError(w, http.StatusInternalServerError, err)
 		}
 	}
 }
@@ -186,28 +173,32 @@ func isValidString(input string, regex string) error {
 	return nil
 }
 
-// GET Requests
-
 // Accounts requests the full list if accounts stored in the DB - TODO paginate this request
-func (s *Service) Accounts() http.HandlerFunc {
+func Accounts(dbClient database.DBClient) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Execute Query against PSQL
-		acc, err := s.dbClient.NewQuery().GetUsers(context.Background())
+		acc, err := dbClient.NewQuery().GetUsers(context.Background())
 		if err != nil {
-			RespondWithError(w, http.StatusInternalServerError, err)
+			if err.Error() != database.ErrNotFound.Error() {
+				RespondWithError(w, http.StatusInternalServerError, err)
+				return
+			}
+			RespondWithError(w, http.StatusNotFound, err)
 			return
 		}
 
 		if err := RespondWithJSON(w, http.StatusOK, acc); err != nil {
-			s.logger.Error(err)
+			RespondWithError(w, http.StatusInternalServerError, err)
 		}
 
 	}
 
 }
 
+// POST REQUESTS
+
 // AccountByIndex requests the account for supplied ID number
-func (s *Service) AccountByIndex() http.HandlerFunc {
+func AccountByIndex(dbClient database.DBClient) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var c database.Account
 		if err := DecodeJSON(r.Body, &c); err != nil {
@@ -222,14 +213,18 @@ func (s *Service) AccountByIndex() http.HandlerFunc {
 		}
 
 		// Execute Query against PSQL
-		acc, err := s.dbClient.NewQuery().GetUser(context.Background(), c.ID)
+		acc, err := dbClient.NewQuery().GetUser(context.Background(), c.ID)
 		if err != nil {
-			RespondWithError(w, http.StatusInternalServerError, err)
+			if err.Error() != database.ErrNotFound.Error() {
+				RespondWithError(w, http.StatusInternalServerError, err)
+				return
+			}
+			RespondWithError(w, http.StatusNotFound, err)
 			return
 		}
 
 		if err := RespondWithJSON(w, http.StatusOK, acc); err != nil {
-			s.logger.Error(err)
+			RespondWithError(w, http.StatusInternalServerError, err)
 		}
 
 	}
@@ -237,7 +232,7 @@ func (s *Service) AccountByIndex() http.HandlerFunc {
 }
 
 // AccountByUsername requests the account for supplied ID number
-func (s *Service) AccountByUsername() http.HandlerFunc {
+func AccountByUsername(dbClient database.DBClient) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var c database.Account
 		if err := DecodeJSON(r.Body, &c); err != nil {
@@ -252,14 +247,24 @@ func (s *Service) AccountByUsername() http.HandlerFunc {
 		}
 
 		// Execute Query against PSQL
-		acc, err := s.dbClient.NewQuery().GetUserByUsername(context.Background(), c.Username)
+		acc, err := dbClient.NewQuery().GetUserByUsername(context.Background(), c.Username)
 		if err != nil {
-			RespondWithError(w, http.StatusInternalServerError, err)
+			if err.Error() != database.ErrNotFound.Error() {
+				RespondWithError(w, http.StatusInternalServerError, err)
+				return
+			}
+			RespondWithError(w, http.StatusNotFound, err)
+			return
+		}
+
+		// Another zero response is an empty Account struct
+		if acc.ID == 0 {
+			RespondWithError(w, http.StatusNotFound, database.ErrNotFound)
 			return
 		}
 
 		if err := RespondWithJSON(w, http.StatusOK, acc); err != nil {
-			s.logger.Error(err)
+			RespondWithError(w, http.StatusInternalServerError, err)
 		}
 
 	}
@@ -267,7 +272,7 @@ func (s *Service) AccountByUsername() http.HandlerFunc {
 }
 
 // AccountByUsername requests the account for supplied ID number
-func (s *Service) AccountByEmail() http.HandlerFunc {
+func AccountByEmail(dbClient database.DBClient) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var c database.Account
 		if err := DecodeJSON(r.Body, &c); err != nil {
@@ -280,21 +285,31 @@ func (s *Service) AccountByEmail() http.HandlerFunc {
 			return
 		}
 		// Execute Query against PSQL
-		acc, err := s.dbClient.NewQuery().GetUserByEmail(context.Background(), c.Email)
+		acc, err := dbClient.NewQuery().GetUserByEmail(context.Background(), c.Email)
 		if err != nil {
-			RespondWithError(w, http.StatusInternalServerError, err)
+			if err.Error() != database.ErrNotFound.Error() {
+				RespondWithError(w, http.StatusInternalServerError, err)
+				return
+			}
+			RespondWithError(w, http.StatusNotFound, err)
+			return
+		}
+
+		// Another zero response is an empty Account struct
+		if acc.ID == 0 {
+			RespondWithError(w, http.StatusNotFound, database.ErrNotFound)
 			return
 		}
 
 		if err := RespondWithJSON(w, http.StatusOK, acc); err != nil {
-			s.logger.Error(err)
+			RespondWithError(w, http.StatusInternalServerError, err)
 		}
 	}
 
 }
 
 // TransactionByIndex requests the transaction for supplied ID number - TODO paginate these requests
-func (s *Service) TransactionByIndex() http.HandlerFunc {
+func TransactionByIndex(dbClient database.DBClient) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var txParams database.Transaction
 		if err := DecodeJSON(r.Body, &txParams); err != nil {
@@ -308,20 +323,29 @@ func (s *Service) TransactionByIndex() http.HandlerFunc {
 		}
 
 		// Execute Query against PSQL
-		tx, err := s.dbClient.NewQuery().GetTx(context.Background(), txParams.ID)
+		tx, err := dbClient.NewQuery().GetTx(context.Background(), txParams.ID)
 		if err != nil {
-			RespondWithError(w, http.StatusInternalServerError, err)
+			if err.Error() != database.ErrNotFound.Error() {
+				RespondWithError(w, http.StatusInternalServerError, err)
+				return
+			}
+			RespondWithError(w, http.StatusNotFound, err)
+			return
+		}
+
+		if tx.ID == 0 {
+			RespondWithError(w, http.StatusNotFound, database.ErrNotFound)
 			return
 		}
 
 		if err := RespondWithJSON(w, http.StatusOK, tx); err != nil {
-			s.logger.Error(err)
+			RespondWithError(w, http.StatusInternalServerError, err)
 		}
 	}
 }
 
 // TxHistory returns the full list of to and from transactions from the database
-func (s *Service) TxHistory() http.HandlerFunc {
+func TxHistory(dbClient database.DBClient) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var c database.Account
 		if err := DecodeJSON(r.Body, &c); err != nil {
@@ -336,9 +360,13 @@ func (s *Service) TxHistory() http.HandlerFunc {
 		}
 
 		// Execute Query against PSQL
-		txs, err := s.dbClient.NewQuery().GetUserTransactions(context.Background())
+		txs, err := dbClient.NewQuery().GetUserTransactions(context.Background())
 		if err != nil {
-			RespondWithError(w, http.StatusInternalServerError, err)
+			if err.Error() != database.ErrNotFound.Error() {
+				RespondWithError(w, http.StatusInternalServerError, err)
+				return
+			}
+			RespondWithError(w, http.StatusNotFound, err)
 			return
 		}
 
@@ -354,17 +382,17 @@ func (s *Service) TxHistory() http.HandlerFunc {
 		}
 
 		if err := RespondWithJSON(w, http.StatusOK, filteredTx); err != nil {
-			s.logger.Error(err)
+			RespondWithError(w, http.StatusInternalServerError, err)
 		}
 	}
 
 }
 
-// POST Requests
+// PUT Requests
 
 // CreateAccount validates then writes a new account to the database
 // Once registered the new account will have a unique ID number.
-func (s *Service) CreateAccount() http.HandlerFunc {
+func CreateAccount(dbClient database.DBClient) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var c database.CreateAccountParams
 		if err := DecodeJSON(r.Body, &c); err != nil {
@@ -379,18 +407,18 @@ func (s *Service) CreateAccount() http.HandlerFunc {
 		}
 
 		// Verify uniqueness
-		if u, _ := s.dbClient.NewQuery().GetUserByUsername(context.Background(), c.Username); u.ID != 0 {
+		if u, _ := dbClient.NewQuery().GetUserByUsername(context.Background(), c.Username); u.ID != 0 {
 			RespondWithError(w, http.StatusBadRequest, fmt.Errorf("username already exists"))
 			return
 		}
 
-		if u, _ := s.dbClient.NewQuery().GetUserByEmail(context.Background(), c.Email); u.Email.Valid {
+		if u, _ := dbClient.NewQuery().GetUserByEmail(context.Background(), c.Email); u.Email.Valid {
 			RespondWithError(w, http.StatusBadRequest, fmt.Errorf("email already exists"))
 			return
 		}
 
 		// Execute Query against PSQL
-		acc, err := s.dbClient.NewQuery().CreateAccount(context.Background(), database.CreateAccountParams{
+		acc, err := dbClient.NewQuery().CreateAccount(context.Background(), database.CreateAccountParams{
 			Email:    c.Email,
 			Username: c.Username,
 			Balance:  0,
@@ -401,7 +429,7 @@ func (s *Service) CreateAccount() http.HandlerFunc {
 		}
 
 		if err := RespondWithJSON(w, http.StatusOK, acc); err != nil {
-			s.logger.Error(err)
+			RespondWithError(w, http.StatusInternalServerError, err)
 		}
 
 	}
@@ -410,7 +438,7 @@ func (s *Service) CreateAccount() http.HandlerFunc {
 
 // CreateTx posts a new transaction to the DB. Transaction fields
 // are validated before the tx is registered
-func (s *Service) CreateTx() http.HandlerFunc {
+func CreateTx(dbClient database.DBClient) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var txParams database.CreateTransactionParams
 		if err := DecodeJSON(r.Body, &txParams); err != nil {
@@ -432,17 +460,17 @@ func (s *Service) CreateTx() http.HandlerFunc {
 		}
 
 		// Check to and from account exist
-		if _, err := s.dbClient.NewQuery().GetUser(context.Background(), txParams.FromAccount.Int64); err != nil {
+		if _, err := dbClient.NewQuery().GetUser(context.Background(), txParams.FromAccount.Int64); err != nil {
 			RespondWithError(w, http.StatusBadRequest, err)
 			return
 		}
-		if _, err := s.dbClient.NewQuery().GetUser(context.Background(), txParams.ToAccount.Int64); err != nil {
+		if _, err := dbClient.NewQuery().GetUser(context.Background(), txParams.ToAccount.Int64); err != nil {
 			RespondWithError(w, http.StatusBadRequest, err)
 			return
 		}
 
 		// Execute Query against PSQL
-		tx, err := s.dbClient.NewQuery().CreateTransaction(context.Background(), database.CreateTransactionParams{
+		tx, err := dbClient.NewQuery().CreateTransaction(context.Background(), database.CreateTransactionParams{
 			FromAccount: txParams.FromAccount,
 			ToAccount:   txParams.ToAccount,
 			Amount:      txParams.Amount,
@@ -454,7 +482,7 @@ func (s *Service) CreateTx() http.HandlerFunc {
 		// TODO, update user balance - requires using DB Tx (with rollback)
 
 		if err := RespondWithJSON(w, http.StatusOK, tx); err != nil {
-			s.logger.Error(err)
+			RespondWithError(w, http.StatusInternalServerError, err)
 		}
 
 	}

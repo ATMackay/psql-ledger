@@ -26,7 +26,7 @@ func BenchmarkAccountWrite(b *testing.B) {
 	serverURL := "http://0.0.0.0:8080"
 
 	// Healthcheck the stack
-	response, err := executeRequest(http.MethodGet, serverURL+service.Health, nil, http.StatusOK)
+	response, err := executeRequest(http.MethodGet, serverURL+service.HealthEndPnt, nil, http.StatusOK)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -46,7 +46,7 @@ func BenchmarkAccountWrite(b *testing.B) {
 		if err != nil {
 			b.Fatal(err)
 		}
-		response, err := executeRequest(http.MethodPut, serverURL+service.CreateAccount, bytes.NewReader(accBytes), http.StatusOK)
+		response, err := executeRequest(http.MethodPut, serverURL+service.CreateAccountEndPnt, bytes.NewReader(accBytes), http.StatusOK)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -62,7 +62,7 @@ func BenchmarkAccountRead(b *testing.B) {
 	serverURL := "http://0.0.0.0:8080"
 
 	// Healthcheck the stack
-	response, err := executeRequest(http.MethodGet, serverURL+service.Health, nil, http.StatusOK)
+	response, err := executeRequest(http.MethodGet, serverURL+service.HealthEndPnt, nil, http.StatusOK)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -77,7 +77,7 @@ func BenchmarkAccountRead(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	response, err = executeRequest(http.MethodPut, serverURL+service.CreateAccount, bytes.NewReader(accBytes), http.StatusOK)
+	response, err = executeRequest(http.MethodPut, serverURL+service.CreateAccountEndPnt, bytes.NewReader(accBytes), http.StatusOK)
 	if err != nil {
 		b.Logf("account may already exist: %v", err)
 	}
@@ -93,7 +93,7 @@ func BenchmarkAccountRead(b *testing.B) {
 
 	for n := 0; n < b.N; n++ {
 		// fetch user account
-		if _, err = executeRequest(http.MethodPost, serverURL+service.GetAccount, bytes.NewReader(queryB), http.StatusOK); err != nil {
+		if _, err = executeRequest(http.MethodPost, serverURL+service.GetAccountEndPnt, bytes.NewReader(queryB), http.StatusOK); err != nil {
 			b.Fatal(err)
 		}
 	}
@@ -107,7 +107,7 @@ func BenchmarkTransactionWrite(b *testing.B) {
 	serverURL := "http://0.0.0.0:8080"
 
 	// Healthcheck the stack
-	response, err := executeRequest(http.MethodGet, serverURL+service.Health, nil, http.StatusOK)
+	response, err := executeRequest(http.MethodGet, serverURL+service.HealthEndPnt, nil, http.StatusOK)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -119,7 +119,7 @@ func BenchmarkTransactionWrite(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	response, _ = executeRequest(http.MethodPut, serverURL+service.CreateAccount, bytes.NewReader(accBytes), http.StatusOK)
+	response, _ = executeRequest(http.MethodPut, serverURL+service.CreateAccountEndPnt, bytes.NewReader(accBytes), http.StatusOK)
 	if response != nil {
 		response.Body.Close()
 	}
@@ -130,7 +130,7 @@ func BenchmarkTransactionWrite(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	response, _ = executeRequest(http.MethodPut, serverURL+service.CreateAccount, bytes.NewReader(accBytes), http.StatusOK)
+	response, _ = executeRequest(http.MethodPut, serverURL+service.CreateAccountEndPnt, bytes.NewReader(accBytes), http.StatusOK)
 	if response != nil {
 		response.Body.Close()
 	}
@@ -143,7 +143,7 @@ func BenchmarkTransactionWrite(b *testing.B) {
 			b.Fatal(err)
 		}
 		// Write transaction
-		if _, err = executeRequest(http.MethodPut, serverURL+service.CreateTx, bytes.NewReader(TxB), http.StatusOK); err != nil {
+		if _, err = executeRequest(http.MethodPut, serverURL+service.CreateTxEndPnt, bytes.NewReader(TxB), http.StatusOK); err != nil {
 			b.Fatal(err)
 		}
 	}

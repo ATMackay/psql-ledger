@@ -4,12 +4,15 @@ import (
 	"context"
 	"database/sql"
 	"database/sql/driver"
+	"errors"
 	"fmt"
 
 	"github.com/golang-migrate/migrate"
 	"github.com/golang-migrate/migrate/database/postgres"
 	_ "github.com/golang-migrate/migrate/source/file"
 )
+
+var ErrNotFound = errors.New("not found")
 
 var _ DBClient = (*PSQLClient)(nil)
 

@@ -8,7 +8,10 @@ run: build
 	cd build && ./psqlledger
 
 test: 
-	go test -cover ./...
+	go test -v -cover ./service
+
+test-stack: 
+	go test -v -cover ./integrationstests
 
 # Must have Docker installed on the host machine
 
