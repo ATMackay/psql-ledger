@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -195,7 +196,7 @@ func HandleResponseErr(resp *http.Response) error {
 		if err := DecodeJSON(resp.Body, &v); err != nil {
 			return fmt.Errorf("cannot parse JSON body from error response: %w", err)
 		}
-		return fmt.Errorf(v.Err)
+		return errors.New(v.Err)
 	}
 	return nil
 }
