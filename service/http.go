@@ -38,6 +38,7 @@ func (h *HTTPService) Addr() string {
 
 func (h *HTTPService) Start() {
 	go func() {
+		h.logger.Infof("server listening on http://0.0.0.0%v", h.Addr())
 		if err := h.server.ListenAndServe(); err != nil {
 			h.logger.WithFields(logrus.Fields{"error": err}).Warn("serverTerminated")
 		}
