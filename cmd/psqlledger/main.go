@@ -25,7 +25,7 @@ var (
 //
 // $ go build
 // $ export PSQLLEDGER_POSTGRES_PASSWORD=<your_password>
-// $ ./fusionkms
+// $ ./psqlledger
 //
 //
 

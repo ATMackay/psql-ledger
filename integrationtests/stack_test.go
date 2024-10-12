@@ -29,14 +29,14 @@ func Test_StackAPI(t *testing.T) {
 			"status",
 			service.StatusEndPnt,
 			http.MethodGet,
-			&service.StatusResponse{Message: "OK", Version: service.FullVersion, Service: service.ServiceName},
+			&service.StatusResponse{Message: "OK", Version: service.Version, Service: service.ServiceName},
 			http.StatusOK,
 		},
 		{
 			"health",
 			service.HealthEndPnt,
 			http.MethodGet,
-			&service.HealthResponse{Version: service.FullVersion, Service: service.ServiceName, Failures: []string{}},
+			&service.HealthResponse{Version: service.Version, Service: service.ServiceName, Failures: []string{}},
 			http.StatusOK,
 		},
 	}

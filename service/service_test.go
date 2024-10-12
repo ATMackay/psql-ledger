@@ -159,7 +159,7 @@ func Test_API(t *testing.T) {
 			StatusEndPnt,
 			http.MethodGet,
 			func() []byte { return nil },
-			&StatusResponse{Message: "OK", Version: FullVersion, Service: ServiceName},
+			&StatusResponse{Message: "OK", Version: Version, Service: ServiceName},
 			http.StatusOK,
 		},
 		{
@@ -167,7 +167,7 @@ func Test_API(t *testing.T) {
 			HealthEndPnt,
 			http.MethodGet,
 			func() []byte { return nil },
-			&HealthResponse{Version: FullVersion, Service: ServiceName, Failures: []string{}},
+			&HealthResponse{Version: Version, Service: ServiceName, Failures: []string{}},
 			http.StatusOK,
 		},
 		//
@@ -298,7 +298,7 @@ func Test_API(t *testing.T) {
 				}
 				return b
 			},
-			&[]database.GetUserTransactionsRow{database.GetUserTransactionsRow{TransactionID: testTx.ID, FromAccountID: testTx.FromAccount, ToAccountID: testTx.ToAccount, Amount: testTx.Amount}},
+			&[]database.GetUserTransactionsRow{{TransactionID: testTx.ID, FromAccountID: testTx.FromAccount, ToAccountID: testTx.ToAccount, Amount: testTx.Amount}},
 			http.StatusOK,
 		},
 		//

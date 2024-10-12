@@ -1,6 +1,6 @@
 module github.com/ATMackay/psql-ledger
 
-go 1.21.6
+go 1.23.1
 
 require (
 	github.com/golang-migrate/migrate v3.5.4+incompatible

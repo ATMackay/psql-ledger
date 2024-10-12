@@ -1,5 +1,5 @@
 # Use a  golang alpine as the base image
-FROM public.ecr.aws/docker/library/golang:1.21.0-alpine3.17 as go_builder
+FROM public.ecr.aws/docker/library/golang:1.23.1-alpine3.20 as go_builder
 RUN apk update
 RUN apk add make cmake git alpine-sdk
 
@@ -7,17 +7,25 @@ RUN apk add make cmake git alpine-sdk
 
 # Read arguments
 ARG ARCH
+ARG VERSION
 ARG BUILD_DATE
-ARG GIT_SHA
+ARG COMMIT_DATE
+ARG COMMIT_HASH
 ARG SERVICE
 
 # Set env variables
 ENV arch=$ARCH
+ENV version=$VERSION
 ENV build_date=$BUILD_DATE
-ENV commit_hash=$GIT_SHA
+ENV commit_date=$COMMIT_DATE
+ENV commit_hash=$COMMIT_HASH
 ENV service_name=$SERVICE
-RUN echo "building service: ${service_name}, build date: ${build_date}, commit hash: ${commit_hash}, architecture: ${arch}"
-
+RUN echo "building service: ${service_name}"
+RUN echo "version: ${version}"
+RUN echo "build date: ${build_date}"
+RUN echo "commit date: ${commit_date}"
+RUN echo "commit hash: ${commit_hash}"
+RUN echo "architecture: ${arch}"
 # Set the working directory
 WORKDIR /
 COPY . .
@@ -28,7 +36,7 @@ RUN go mod download
 
 RUN GO111MODULES=on \
     go build \
-    -ldflags "-w -linkmode external -extldflags '-static' -X 'github.com/ATMackay/psql-ledger/service.buildDate=${build_date}' -X 'github.com/ATMackay/psql-ledger/service.gitCommit=${commit_hash}'"  \
+    -ldflags "-w -linkmode external -extldflags '-static' -X 'github.com/ATMackay/psql-ledger/service.buildDate=${build_date}' -X 'github.com/ATMackay/psql-ledger/service.gitCommit=${commit_hash}' -X 'github.com/ATMackay/psql-ledger/service.commitDate=${commit_date}' -X 'github.com/ATMackay/psql-ledger/service.version=${version}'"  \
     -tags netgo \
     -o /out/psqlledger ./cmd/psqlledger/
 

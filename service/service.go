@@ -7,7 +7,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var versionFields = logrus.Fields{"buildDate": Date, "gitCommitSha": GitCommitHash}
+var versionFields = logrus.Fields{"version": Version, "commitDate": CommitDate, "buildDate": BuildDate, "gitCommitSha": GitCommitHash}
 
 // Service represents the main psqllgedger service body with
 // HTTP interface and DB connection.

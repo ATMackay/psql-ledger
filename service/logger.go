@@ -26,11 +26,6 @@ const (
 	Plain Format = "plain"
 )
 
-var (
-	Version     = "v0.1.0" // Semantic version
-	FullVersion = fmt.Sprintf("%s-%v", Version, GitCommitHash[0:8])
-)
-
 // actionFormatter duplicate the log message inside a field action
 // this is useful for log analysis.
 type actionFormatter struct {
@@ -76,7 +71,7 @@ func NewLogger(logLevel Level, logFormat Format, tofile bool, service string) (*
 	logger.Level = l.Level
 	logger = logger.WithFields(logrus.Fields{
 		"serviceName": service,
-		"version":     FullVersion,
+		"version":     Version,
 	})
 	return logger, nil
 }

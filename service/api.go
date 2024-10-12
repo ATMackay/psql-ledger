@@ -28,52 +28,52 @@ const (
 
 func makeServiceAPIs(dbClient database.DBClient) *API {
 	return MakeAPI([]EndPoint{
-		EndPoint{
+		{
 			Path:       StatusEndPnt,
 			Handler:    Status(),
 			MethodType: http.MethodGet,
 		},
-		EndPoint{
+		{
 			Path:       HealthEndPnt,
 			Handler:    Health(dbClient),
 			MethodType: http.MethodGet,
 		},
-		EndPoint{
+		{
 			Path:       AccountsEndPnt,
 			Handler:    Accounts(dbClient),
 			MethodType: http.MethodGet,
 		},
-		EndPoint{
+		{
 			Path:       GetAccountEndPnt,
 			Handler:    AccountByIndex(dbClient),
 			MethodType: http.MethodPost,
 		},
-		EndPoint{
+		{
 			Path:       GetAccountByEmailEndPnt,
 			Handler:    AccountByEmail(dbClient),
 			MethodType: http.MethodPost,
 		},
-		EndPoint{
+		{
 			Path:       GetAccountByUsernameEndPnt,
 			Handler:    AccountByUsername(dbClient),
 			MethodType: http.MethodPost,
 		},
-		EndPoint{
+		{
 			Path:       GetAccountTransactionsEndPnt,
 			Handler:    TxHistory(dbClient),
 			MethodType: http.MethodPost,
 		},
-		EndPoint{
+		{
 			Path:       GetTransactionByIndexEndPnt,
 			Handler:    TransactionByIndex(dbClient),
 			MethodType: http.MethodPost,
 		},
-		EndPoint{
+		{
 			Path:       CreateTxEndPnt,
 			Handler:    CreateTx(dbClient),
 			MethodType: http.MethodPut,
 		},
-		EndPoint{
+		{
 			Path:       CreateAccountEndPnt,
 			Handler:    CreateAccount(dbClient),
 			MethodType: http.MethodPut,
@@ -93,7 +93,7 @@ type StatusResponse struct {
 // Status implements the status request endpoint. Always returns OK.
 func Status() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if err := RespondWithJSON(w, http.StatusOK, &StatusResponse{Message: "OK", Version: FullVersion, Service: ServiceName}); err != nil {
+		if err := RespondWithJSON(w, http.StatusOK, &StatusResponse{Message: "OK", Version: Version, Service: ServiceName}); err != nil {
 			RespondWithError(w, http.StatusInternalServerError, err)
 		}
 	}
@@ -112,7 +112,7 @@ func Health(dbClient database.DBClient) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		health := &HealthResponse{
 			Service: ServiceName,
-			Version: FullVersion,
+			Version: Version,
 		}
 		var failures = []string{}
 		var httpCode = http.StatusOK

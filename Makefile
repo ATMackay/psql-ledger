@@ -1,8 +1,16 @@
 # Alex Mackay 2024
 
+# Git based version
+VERSION ?= $(shell git describe --tags)
+COMMIT ?= $(shell git rev-parse --short HEAD)
+BUILD_DATE ?= $(shell date -u +'%Y-%m-%d %H:%M:%S')
+COMMIT_DATE ?= $(shell git show -s --format="%ci" $(shell git rev-parse HEAD))
+
+# Build folder
+BUILD_FOLDER = build
+
 build:
-	GO111MODULE=on go build -ldflags "-w -linkmode external -extldflags '-static' -X 'github.com/ATMackay/psql-ledger/service.buildDate=$(shell date +"%Y-%m-%d %H:%M:%S")' -X 'github.com/ATMackay/psql-ledger/service.gitCommit=$(shell git rev-parse --short HEAD)'" ./cmd/psqlledger
-	mv psqlledger ./build
+	go build -o $(BUILD_FOLDER)/psqlledger -v -ldflags=" -X 'github.com/ATMackay/psql-ledger/service.commitDate=$(COMMIT_DATE)' -X 'github.com/ATMackay/psql-ledger/service.buildDate=$(BUILD_DATE)' -X 'github.com/ATMackay/psql-ledger/service.version=$(VERSION)' -X 'github.com/ATMackay/psql-ledger/service.gitCommit=$(COMMIT)'" ./cmd/psqlledger
 
 run: build
 	cd build && ./psqlledger
