@@ -24,8 +24,8 @@ var emptyConfig = Config{}
 
 var DefaultConfig = Config{
 	Port:             8080,
-	LogLevel:         string(Info),
-	LogFormat:        string(Plain),
+	LogLevel:         "info",
+	LogFormat:        "text",
 	LogToFile:        false,
 	PostgresHost:     "localhost",          // Default Postgres database configuration
 	PostgresPort:     5432,                 //

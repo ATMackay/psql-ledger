@@ -7,21 +7,20 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"time"
 
 	"github.com/julienschmidt/httprouter"
-	"github.com/sirupsen/logrus"
 )
 
 type HTTPService struct {
 	server *http.Server
-	logger *logrus.Entry
 }
 
-func NewHTTPService(port int, api *API, l *logrus.Entry) HTTPService {
+func NewHTTPService(port int, api *API) HTTPService {
 
-	handler := api.Routes(l)
+	handler := api.Routes()
 
 	return HTTPService{
 		server: &http.Server{
@@ -29,7 +28,6 @@ func NewHTTPService(port int, api *API, l *logrus.Entry) HTTPService {
 			Handler:           handler,
 			ReadHeaderTimeout: 5 * time.Second,
 		},
-		logger: l,
 	}
 }
 
@@ -39,9 +37,9 @@ func (h *HTTPService) Addr() string {
 
 func (h *HTTPService) Start() {
 	go func() {
-		h.logger.Infof("server listening on http://0.0.0.0%v", h.Addr())
+		slog.Info(fmt.Sprintf("server listening on http://0.0.0.0%v", h.Addr()))
 		if err := h.server.ListenAndServe(); err != nil {
-			h.logger.WithFields(logrus.Fields{"error": err}).Warn("serverTerminated")
+			slog.Warn("serverTerminated", "error", err)
 		}
 	}()
 }
@@ -82,13 +80,13 @@ func (a *API) AddEndpoint(e EndPoint) {
 	a.Endpoints = append(a.Endpoints, e)
 }
 
-func (a *API) Routes(l *logrus.Entry) *httprouter.Router {
+func (a *API) Routes() *httprouter.Router {
 
 	router := httprouter.New()
 
 	for _, e := range a.Endpoints {
 
-		router.Handler(e.MethodType, e.Path, logHTTPRequest(l, e.Handler))
+		router.Handler(e.MethodType, e.Path, logHTTPRequest(e.Handler))
 
 	}
 	return router
@@ -97,36 +95,28 @@ func (a *API) Routes(l *logrus.Entry) *httprouter.Router {
 // HTTP logging middleware
 
 // logHTTPRequest provides logging middleware. It surfaces low level request/response data from the http server.
-func logHTTPRequest(entry *logrus.Entry, h http.Handler) http.Handler {
+func logHTTPRequest(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		if entry == nil {
-			return
-		}
 		start := time.Now()
-		body, err := readBody(req)
-		if err != nil {
-			entry.WithError(err)
-		}
 		statusRecorder := &responseRecorder{ResponseWriter: w}
 		h.ServeHTTP(statusRecorder, req)
 		elapsed := time.Since(start)
 		httpCode := statusRecorder.statusCode
-		entry = entry.WithFields(logrus.Fields{
-			"http_route":           req.URL.Path,
-			"http_method":          req.Method,
-			"http_code":            httpCode,
-			"elapsed_microseconds": elapsed.Microseconds(),
-		})
-		// only log full request/reposne data if running in debug mode
-		if entry.Logger.Level >= logrus.DebugLevel {
-			entry = entry.WithField("body", body)
-			entry = entry.WithField("response", string(statusRecorder.response))
+		if httpCode > 499 {
+			slog.Error(req.URL.Path, "http_method", req.Method,
+				"http_code", httpCode,
+				"elapsed_microseconds", elapsed.Microseconds())
+			return
 		}
 		if httpCode > 399 {
-			entry.Warn(req.URL.Path)
-		} else {
-			entry.Print(req.URL.Path)
+			slog.Warn(req.URL.Path, "http_method", req.Method,
+				"http_code", httpCode,
+				"elapsed_microseconds", elapsed.Microseconds())
+			return
 		}
+		slog.Info(req.URL.Path, "http_method", req.Method,
+			"http_code", httpCode,
+			"elapsed_microseconds", elapsed.Microseconds())
 	})
 }
 
