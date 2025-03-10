@@ -1,36 +1,33 @@
 package service
 
 import (
+	"log/slog"
 	"os"
 
 	"github.com/ATMackay/psql-ledger/database"
-	"github.com/sirupsen/logrus"
 )
-
-var versionFields = logrus.Fields{"version": Version, "commitDate": CommitDate, "buildDate": BuildDate, "gitCommitSha": GitCommitHash}
 
 // Service represents the main psqllgedger service body with
 // HTTP interface and DB connection.
 type Service struct {
-	logger   *logrus.Entry
 	dbClient database.DBClient
 	server   *HTTPService
 }
 
 func (s *Service) Start() {
-	s.logger.WithFields(versionFields).Infof("starting %v service", ServiceName)
+	slog.Info("starting service", "version", Version, "commitDate", CommitDate, "buildDate", BuildDate, "gitCommitSha", GitCommitHash)
 	s.server.Start()
 }
 
 func (s *Service) Stop(sig os.Signal) {
-	s.logger.WithFields(logrus.Fields{"signal": sig}).Infof("stopping %v service", ServiceName)
+	slog.Info("stopping service", "signal", sig)
 
 	if err := s.dbClient.DB().Close(); err != nil {
-		s.logger.WithFields(logrus.Fields{"error": err}).Error("error closing db")
+		slog.Error("error closing db", "error", err)
 	}
 
 	if err := s.server.Stop(); err != nil {
-		s.logger.WithFields(logrus.Fields{"error": err}).Error("error stopping server")
+		slog.Error("error stopping server")
 	}
 }
 

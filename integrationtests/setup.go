@@ -2,7 +2,6 @@ package integrationtests
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -32,7 +31,7 @@ type postgresDBContainer struct {
 func startPSQLContainer(ctx context.Context) (*postgresDBContainer, error) {
 	req := testcontainers.ContainerRequest{
 		Image:        "postgres:latest",
-		Name:         "postgres",
+		Name:         "postgres-test",
 		ExposedPorts: []string{"5432/tcp"},
 		Env:          map[string]string{"POSTGRES_USER": postgresUsr, "POSTGRES_PASSWORD": postgresPswd, "POSTGRES_DB": postgresDB},
 		WaitingFor:   wait.ForLog("database system is ready to accept connections").WithStartupTimeout(5 * time.Second),
@@ -109,7 +108,7 @@ func createStack(t testing.TB) *stack {
 	return &stack{psql: psqlContainer, psqlLedger: psqlLedger}
 }
 
-func executeRequest(methodType, url string, body io.Reader, expectedCode int) (*http.Response, error) {
+func executeRequest(methodType, url string, body io.Reader) (*http.Response, error) {
 	client := &http.Client{
 		Transport: &http.Transport{
 			DisableKeepAlives: true,
@@ -127,9 +126,6 @@ func executeRequest(methodType, url string, body io.Reader, expectedCode int) (*
 		return nil, err
 	}
 
-	if g, w := response.StatusCode, expectedCode; g != w {
-		return response, fmt.Errorf("unexpected response code, want %v got %v", w, g)
-	}
 	return response, nil
 
 }

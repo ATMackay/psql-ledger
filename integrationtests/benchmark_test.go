@@ -19,6 +19,30 @@ import (
 // make postgresup
 // make createdb
 // make run
+
+func BenchmarkHealthcheck(b *testing.B) {
+
+	// Setup
+	serverURL := "http://0.0.0.0:8080"
+
+	// Write a User Account to the DB
+	rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	for n := 0; n < b.N; n++ {
+		// Healthcheck the stack
+		response, err := executeRequest(http.MethodGet, serverURL+service.HealthEndPnt, nil)
+		if err != nil {
+			b.Fatal(err)
+		}
+		response.Body.Close()
+
+		if g, w := response.StatusCode, http.StatusOK; g != w {
+			b.Fatalf("expected %v, got %v", w, g)
+		}
+	}
+
+}
+
 func BenchmarkAccountWrite(b *testing.B) {
 
 	// Setup
@@ -26,11 +50,15 @@ func BenchmarkAccountWrite(b *testing.B) {
 	serverURL := "http://0.0.0.0:8080"
 
 	// Healthcheck the stack
-	response, err := executeRequest(http.MethodGet, serverURL+service.HealthEndPnt, nil, http.StatusOK)
+	response, err := executeRequest(http.MethodGet, serverURL+service.HealthEndPnt, nil)
 	if err != nil {
 		b.Fatal(err)
 	}
 	response.Body.Close()
+
+	if g, w := response.StatusCode, http.StatusOK; g != w {
+		b.Fatalf("expected %v, got %v", w, g)
+	}
 
 	userName := "myusername"
 	email := "myemail@provider.com"
@@ -46,11 +74,14 @@ func BenchmarkAccountWrite(b *testing.B) {
 		if err != nil {
 			b.Fatal(err)
 		}
-		response, err := executeRequest(http.MethodPut, serverURL+service.CreateAccountEndPnt, bytes.NewReader(accBytes), http.StatusOK)
+		response, err := executeRequest(http.MethodPut, serverURL+service.CreateAccountEndPnt, bytes.NewReader(accBytes))
 		if err != nil {
 			b.Fatal(err)
 		}
 		response.Body.Close()
+		if g, w := response.StatusCode, http.StatusOK; g != w {
+			b.Fatalf("expected %v, got %v", w, g)
+		}
 	}
 
 }
@@ -62,11 +93,14 @@ func BenchmarkAccountRead(b *testing.B) {
 	serverURL := "http://0.0.0.0:8080"
 
 	// Healthcheck the stack
-	response, err := executeRequest(http.MethodGet, serverURL+service.HealthEndPnt, nil, http.StatusOK)
+	response, err := executeRequest(http.MethodGet, serverURL+service.HealthEndPnt, nil)
 	if err != nil {
 		b.Fatal(err)
 	}
 	response.Body.Close()
+	if g, w := response.StatusCode, http.StatusOK; g != w {
+		b.Fatalf("expected %v, got %v", w, g)
+	}
 
 	userName := "myusername"
 	email := "myemail@provider.com"
@@ -77,12 +111,15 @@ func BenchmarkAccountRead(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	response, err = executeRequest(http.MethodPut, serverURL+service.CreateAccountEndPnt, bytes.NewReader(accBytes), http.StatusOK)
+	response, err = executeRequest(http.MethodPut, serverURL+service.CreateAccountEndPnt, bytes.NewReader(accBytes))
 	if err != nil {
 		b.Logf("account may already exist: %v", err)
 	}
 	if response != nil {
 		response.Body.Close()
+		if g, w := response.StatusCode, http.StatusOK; g != w {
+			b.Fatalf("expected %v, got %v", w, g)
+		}
 	}
 
 	queryData := database.Account{ID: 1}
@@ -93,8 +130,11 @@ func BenchmarkAccountRead(b *testing.B) {
 
 	for n := 0; n < b.N; n++ {
 		// fetch user account
-		if _, err = executeRequest(http.MethodPost, serverURL+service.GetAccountEndPnt, bytes.NewReader(queryB), http.StatusOK); err != nil {
+		if _, err = executeRequest(http.MethodPost, serverURL+service.GetAccountEndPnt, bytes.NewReader(queryB)); err != nil {
 			b.Fatal(err)
+		}
+		if g, w := response.StatusCode, http.StatusOK; g != w {
+			b.Fatalf("expected %v, got %v", w, g)
 		}
 	}
 
@@ -107,11 +147,14 @@ func BenchmarkTransactionWrite(b *testing.B) {
 	serverURL := "http://0.0.0.0:8080"
 
 	// Healthcheck the stack
-	response, err := executeRequest(http.MethodGet, serverURL+service.HealthEndPnt, nil, http.StatusOK)
+	response, err := executeRequest(http.MethodGet, serverURL+service.HealthEndPnt, nil)
 	if err != nil {
 		b.Fatal(err)
 	}
 	response.Body.Close()
+	if g, w := response.StatusCode, http.StatusOK; g != w {
+		b.Fatalf("expected %v, got %v", w, g)
+	}
 
 	// Write a User 1 Account to the DB
 	accParams := database.CreateAccountParams{Username: "myusername", Email: sql.NullString{String: "myemail@provider.com"}}
@@ -119,9 +162,12 @@ func BenchmarkTransactionWrite(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	response, _ = executeRequest(http.MethodPut, serverURL+service.CreateAccountEndPnt, bytes.NewReader(accBytes), http.StatusOK)
+	response, _ = executeRequest(http.MethodPut, serverURL+service.CreateAccountEndPnt, bytes.NewReader(accBytes))
 	if response != nil {
 		response.Body.Close()
+		if g, w := response.StatusCode, http.StatusOK; g != w {
+			b.Fatalf("expected %v, got %v", w, g)
+		}
 	}
 
 	// Write a User 2 Account to the DB
@@ -130,9 +176,12 @@ func BenchmarkTransactionWrite(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	response, _ = executeRequest(http.MethodPut, serverURL+service.CreateAccountEndPnt, bytes.NewReader(accBytes), http.StatusOK)
+	response, _ = executeRequest(http.MethodPut, serverURL+service.CreateAccountEndPnt, bytes.NewReader(accBytes))
 	if response != nil {
 		response.Body.Close()
+		if g, w := response.StatusCode, http.StatusOK; g != w {
+			b.Fatalf("expected %v, got %v", w, g)
+		}
 	}
 
 	for n := 0; n < b.N; n++ {
@@ -143,8 +192,11 @@ func BenchmarkTransactionWrite(b *testing.B) {
 			b.Fatal(err)
 		}
 		// Write transaction
-		if _, err = executeRequest(http.MethodPut, serverURL+service.CreateTxEndPnt, bytes.NewReader(TxB), http.StatusOK); err != nil {
+		if _, err = executeRequest(http.MethodPut, serverURL+service.CreateTxEndPnt, bytes.NewReader(TxB)); err != nil {
 			b.Fatal(err)
+		}
+		if g, w := response.StatusCode, http.StatusOK; g != w {
+			b.Fatalf("expected %v, got %v", w, g)
 		}
 	}
 

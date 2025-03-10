@@ -3,15 +3,15 @@ package service
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/ATMackay/psql-ledger/database"
 	"github.com/lib/pq"
-	"github.com/sirupsen/logrus"
 )
 
-func makePostgresDBClient(l *logrus.Entry, config Config) (database.DBClient, error) {
+func makePostgresDBClient(config Config) (database.DBClient, error) {
 
-	d, err := makeClientSet(l, config)
+	d, err := makeClientSet(config)
 	if err != nil {
 		return nil, err
 	}
@@ -22,17 +22,19 @@ func makePostgresDBClient(l *logrus.Entry, config Config) (database.DBClient, er
 	}
 
 	if !exists {
-		l.Debugf("DB %v not found", config.PostgresDB)
+		slog.Debug(fmt.Sprintf("DB %v not found", config.PostgresDB))
 		// TODO - attempt DB creation again..
 		return nil, fmt.Errorf("DB %v does not exist", config.PostgresDB)
 	} else {
-		l.Debugf("found DB %v", config.PostgresDB)
+		slog.Debug(fmt.Sprintf("found DB %v", config.PostgresDB))
 	}
 
 	if err := d.InitializeSchema(config.MigrationsPath); err != nil {
-		return nil, fmt.Errorf("InitializeSchema failed: %v", err)
+		slog.Warn(fmt.Sprintf("InitializeSchema failed: %v", err))
+	} else {
+		slog.Debug(fmt.Sprintf("migrated DB using schema path '%v'", config.MigrationsPath))
 	}
-	l.Debugf("migrated DB using schema path '%v'", config.MigrationsPath)
+
 	return d, nil
 }
 
@@ -40,7 +42,7 @@ type aggregatedClient struct {
 	clients chan database.DBClient
 }
 
-func makeClientSet(l *logrus.Entry, config Config) (aggregatedClient, error) {
+func makeClientSet(config Config) (aggregatedClient, error) {
 	n := config.MaxThreads
 	clients := make(chan database.DBClient, n)
 	a := aggregatedClient{clients: clients}
@@ -59,7 +61,7 @@ func makeClientSet(l *logrus.Entry, config Config) (aggregatedClient, error) {
 		if err != nil {
 			return a, fmt.Errorf("NewPSQLClient err: %v", err)
 		}
-		l.WithField("client", i).Debug("new client")
+		slog.Debug("new client", "index", i)
 		a.clients <- dbClient
 	}
 	return a, nil

@@ -86,12 +86,12 @@ func Test_SantizeConfig(t *testing.T) {
 			"empty-with-log-level",
 			func() Config {
 				cfg := emptyConfig
-				cfg.LogLevel = string(Info)
+				cfg.LogLevel = "info"
 				return cfg
 			},
 			func() Config {
 				cfg := DefaultConfig
-				cfg.LogLevel = string(Info)
+				cfg.LogLevel = "info"
 				return cfg
 			},
 			false,
@@ -114,28 +114,20 @@ func Test_SantizeConfig(t *testing.T) {
 }
 
 func Test_ServiceStartStop(t *testing.T) {
-	l, err := NewLogger("error", "plain", false, "test")
-	if err != nil {
-		t.Fatal(err)
-	}
-	service := New(8080, 1, l, database.NewMemoryDBClient())
+
+	service := New(8080, 1, database.NewMemoryDBClient())
 
 	service.Start()
 
-	service.Stop(os.Kill)
+	service.Stop(os.Interrupt)
 }
 
 func Test_API(t *testing.T) {
-	n := "test"
-	log, err := NewLogger("error", "plain", false, n)
-	if err != nil {
-		t.Fatal(err)
-	}
 
-	s := New(8080, 1, log, database.NewMemoryDBClient())
+	s := New(8080, 1, database.NewMemoryDBClient())
 	s.Start()
 	t.Cleanup(func() {
-		s.Stop(os.Kill)
+		s.Stop(os.Interrupt)
 	})
 	time.Sleep(50 * time.Millisecond) // TODO - smell
 

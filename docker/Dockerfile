@@ -1,5 +1,5 @@
 # Use a  golang alpine as the base image
-FROM public.ecr.aws/docker/library/golang:1.23.1-alpine3.20 as go_builder
+FROM public.ecr.aws/docker/library/golang:1.23.1-alpine3.20 AS go_builder
 RUN apk update
 RUN apk add make cmake git alpine-sdk
 
@@ -57,7 +57,7 @@ RUN mkdir /out/etc && \
 ############################################################################################################
 
 #SSL certs
-FROM alpine as certs
+FROM alpine AS certs
 RUN apk add --no-cache ca-certificates
 
 ############################################################################################################

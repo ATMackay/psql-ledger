@@ -2,9 +2,9 @@ package service
 
 import (
 	"fmt"
+	"log/slog"
 
 	"github.com/ATMackay/psql-ledger/database"
-	"github.com/sirupsen/logrus"
 )
 
 const ServiceName = "psql-ledger"
@@ -15,38 +15,33 @@ func BuildService(cfg Config) (*Service, error) {
 
 	config, defaultUsed := sanitizeConfig(cfg)
 
-	l, err := NewLogger(Level(config.LogLevel), Format(config.LogFormat), config.LogToFile, ServiceName)
-	if err != nil {
+	if err := InitLogging(config.LogLevel, config.LogFormat, config.LogToFile); err != nil {
 		return nil, err
 	}
 
 	if defaultUsed {
-		l.Warnf("no config parameters supplied: using default")
+		slog.Warn("no config parameters supplied: using default")
 	}
 
-	db, err := makePostgresDBClient(l, config)
+	db, err := makePostgresDBClient(config)
 	if err != nil {
 		return nil, fmt.Errorf("could not make postgres DB: %v", err)
 	}
 
-	l.WithFields(logrus.Fields{
-		"port":     config.Port,
-		"loglevel": config.LogLevel,
-		"DBHost":   config.PostgresHost,
-		"DBPort":   config.PostgresPort,
-		"DBUser":   config.PostgresUser,
-		"DBName":   config.PostgresDB,
-	}).Info("connected to postgresDB")
+	slog.Info("connected to postgresDB",
+		"DBHost", config.PostgresHost,
+		"DBPort", config.PostgresPort,
+		"DBUser", config.PostgresUser,
+		"DBName", config.PostgresDB)
 
-	return New(config.Port, config.MaxThreads, l, db), nil
+	return New(config.Port, config.MaxThreads, db), nil
 }
 
-func New(port, threads int, l *logrus.Entry, dbClient database.DBClient) *Service {
+func New(port, threads int, dbClient database.DBClient) *Service {
 	s := &Service{
-		logger:   l,
 		dbClient: dbClient,
 	}
-	h := NewHTTPService(port, makeServiceAPIs(dbClient), l)
+	h := NewHTTPService(port, makeServiceAPIs(dbClient))
 	s.server = &h
 	return s
 }

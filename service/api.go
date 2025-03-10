@@ -116,6 +116,16 @@ func Health(dbClient database.DBClient) http.HandlerFunc {
 		}
 		var failures = []string{}
 		var httpCode = http.StatusOK
+		if dbClient == nil || dbClient.DB() == nil {
+			failures = append(failures, "DB: No connection")
+			httpCode = http.StatusServiceUnavailable
+			health.Failures = failures
+			if err := RespondWithJSON(w, httpCode, health); err != nil {
+				RespondWithError(w, http.StatusInternalServerError, err)
+			}
+			return
+		}
+
 		if err := dbClient.DB().Ping(); err != nil {
 			failures = append(failures, fmt.Sprintf("DB: %v", err))
 			httpCode = http.StatusServiceUnavailable
