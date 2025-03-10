@@ -44,11 +44,14 @@ func Test_StackAPI(t *testing.T) {
 	for _, tt := range apiTests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			response, err := executeRequest(http.MethodGet, fmt.Sprintf("http://0.0.0.0%v%v", stack.psqlLedger.Server().Addr(), tt.endpoint), nil, http.StatusOK)
+			response, err := executeRequest(http.MethodGet, fmt.Sprintf("http://0.0.0.0%v%v", stack.psqlLedger.Server().Addr(), tt.endpoint), nil)
 			if err != nil {
 				t.Fatal(err)
 			}
 			defer response.Body.Close()
+			if g, w := response.StatusCode, http.StatusOK; g != w {
+				t.Fatalf("expected %v, got %v", w, g)
+			}
 
 			// Read the response body
 			b, err := io.ReadAll(response.Body)
@@ -58,7 +61,7 @@ func Test_StackAPI(t *testing.T) {
 			expectedJSON, _ := json.Marshal(tt.expectedResponse)
 
 			if g, w := b, expectedJSON; !bytes.Equal(g, w) {
-				t.Fatalf("unexpected response, want %s, got %s", w, g)
+				t.Fatalf("unexpected response, want %s, got %s, response = %s", w, g, b)
 			}
 		})
 	}
@@ -71,11 +74,14 @@ func Test_E2EReadWriteAccount(t *testing.T) {
 	serverURL := fmt.Sprintf("http://0.0.0.0%v", s.psqlLedger.Server().Addr())
 
 	// Healthcheck the stack
-	response, err := executeRequest(http.MethodGet, serverURL+service.HealthEndPnt, nil, http.StatusOK)
+	response, err := executeRequest(http.MethodGet, serverURL+service.HealthEndPnt, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	response.Body.Close()
+	if g, w := response.StatusCode, http.StatusOK; g != w {
+		t.Fatalf("expected %v, got %v", w, g)
+	}
 
 	userName := "myusername"
 	email := "myemail@provider.com"
@@ -87,11 +93,14 @@ func Test_E2EReadWriteAccount(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	response, err = executeRequest(http.MethodPut, serverURL+service.CreateAccountEndPnt, bytes.NewReader(b), http.StatusOK)
+	response, err = executeRequest(http.MethodPut, serverURL+service.CreateAccountEndPnt, bytes.NewReader(b))
 	if err != nil {
 		t.Fatal(err)
 	}
 	response.Body.Close()
+	if g, w := response.StatusCode, http.StatusOK; g != w {
+		t.Fatalf("expected %v, got %v", w, g)
+	}
 
 	queryData := database.Account{ID: 1}
 	queryB, err := json.Marshal(queryData)
@@ -100,11 +109,14 @@ func Test_E2EReadWriteAccount(t *testing.T) {
 	}
 
 	// Check user account exists
-	response, err = executeRequest(http.MethodPost, serverURL+service.GetAccountEndPnt, bytes.NewReader(queryB), http.StatusOK)
+	response, err = executeRequest(http.MethodPost, serverURL+service.GetAccountEndPnt, bytes.NewReader(queryB))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer response.Body.Close()
+	if g, w := response.StatusCode, http.StatusOK; g != w {
+		t.Fatalf("expected %v, got %v", w, g)
+	}
 
 	respB, err := io.ReadAll(response.Body)
 	if err != nil {
@@ -139,11 +151,14 @@ func Test_MultipleWrites(t *testing.T) {
 	// Setup
 
 	// Healthcheck the stack
-	response, err := executeRequest(http.MethodGet, serverURL+service.HealthEndPnt, nil, http.StatusOK)
+	response, err := executeRequest(http.MethodGet, serverURL+service.HealthEndPnt, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	response.Body.Close()
+	if g, w := response.StatusCode, http.StatusOK; g != w {
+		t.Fatalf("expected %v, got %v", w, g)
+	}
 
 	userName := "myusername"
 	email := "myemail@provider.com"
@@ -162,12 +177,15 @@ func Test_MultipleWrites(t *testing.T) {
 	}
 
 	start := time.Now()
-	for n := 0; n < N; n++ {
-		response, err := executeRequest(http.MethodPut, serverURL+service.CreateAccountEndPnt, bytes.NewReader(reqArray[n]), http.StatusOK)
+	for n := range N {
+		response, err := executeRequest(http.MethodPut, serverURL+service.CreateAccountEndPnt, bytes.NewReader(reqArray[n]))
 		if err != nil {
 			t.Fatal(err)
 		}
 		response.Body.Close()
+	}
+	if g, w := response.StatusCode, http.StatusOK; g != w {
+		t.Fatalf("expected %v, got %v", w, g)
 	}
 	elapsed := time.Since(start)
 	fmt.Printf("completed %d writes in %v milliseconds (%v/s)", N, elapsed, (float64(N) * 1000.0 / float64(elapsed.Milliseconds())))
@@ -183,12 +201,21 @@ func Test_MultipleReads(t *testing.T) {
 	// Setup
 
 	// Healthcheck the stack
-	response, err := executeRequest(http.MethodGet, serverURL+service.HealthEndPnt, nil, http.StatusOK)
+	response, err := executeRequest(http.MethodGet, serverURL+service.HealthEndPnt, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := io.ReadAll(response.Body)
 	if err != nil {
 		t.Fatal(err)
 	}
 	response.Body.Close()
-
+	if g, w := response.StatusCode, http.StatusOK; g != w {
+		t.Fatalf("expected %v, got %v, resp = %s", w, g, b)
+	}
+	if g, w := response.StatusCode, http.StatusOK; g != w {
+		t.Fatalf("expected %v, got %v", w, g)
+	}
 	userName := "myusername"
 	email := "myemail@provider.com"
 
@@ -198,12 +225,18 @@ func Test_MultipleReads(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	response, err = executeRequest(http.MethodPut, serverURL+service.CreateAccountEndPnt, bytes.NewReader(accBytes), http.StatusOK)
+	response, err = executeRequest(http.MethodPut, serverURL+service.CreateAccountEndPnt, bytes.NewReader(accBytes))
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err = io.ReadAll(response.Body)
 	if err != nil {
 		t.Fatal(err)
 	}
 	response.Body.Close()
-
+	if g, w := response.StatusCode, http.StatusOK; g != w {
+		t.Fatalf("expected %v, got %v, resp = %s", w, g, b)
+	}
 	queryData := database.Account{ID: 1}
 	queryB, err := json.Marshal(queryData)
 	if err != nil {
@@ -211,10 +244,13 @@ func Test_MultipleReads(t *testing.T) {
 	}
 
 	start := time.Now()
-	for n := 0; n < N; n++ {
+	for range N {
 		// fetch user account
-		if _, err = executeRequest(http.MethodPost, serverURL+service.GetAccountEndPnt, bytes.NewReader(queryB), http.StatusOK); err != nil {
+		if _, err = executeRequest(http.MethodPost, serverURL+service.GetAccountEndPnt, bytes.NewReader(queryB)); err != nil {
 			t.Fatal(err)
+		}
+		if g, w := response.StatusCode, http.StatusOK; g != w {
+			t.Fatalf("expected %v, got %v", w, g)
 		}
 	}
 	elapsed := time.Since(start)

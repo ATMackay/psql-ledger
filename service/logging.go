@@ -16,9 +16,14 @@ func InitLogging(logLevelStr, logFormat string, toFile bool) error {
 
 	logFile := os.Stderr
 	if toFile {
-		// TODO
+		logFilePath := "log.out" // Define log file name
+		// Open log file (create if it doesn't exist, append if it does)
+		var err error
+		logFile, err = os.OpenFile(logFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+		if err != nil {
+			return err
+		}
 	}
-
 	handlerOpts := &slog.HandlerOptions{
 		Level:     level,
 		AddSource: true,

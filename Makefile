@@ -19,7 +19,7 @@ test:
 	@go test -cover ./service
 
 test-stack: 
-	@go test -cover ./integrationstests
+	@go test -cover ./integrationtests
 
 # Must have Docker installed on the host machine
 
@@ -49,7 +49,7 @@ dropdb:
 migrateup:
 	@migrate -path sqlc/migrations -database "postgresql://root:secret@localhost:5432/bank?sslmode=disable" -verbose up
 
-migratedown:
+migratedown: createdb
 	@migrate -path sqlc/migrations -database "postgresql://root:secret@localhost:5432/bank?sslmode=disable" -verbose down
 
 # Requires sqlc installation: https://docs.sqlc.dev/en/stable/overview/install.html

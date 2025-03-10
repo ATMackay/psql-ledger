@@ -29,10 +29,12 @@ func makePostgresDBClient(config Config) (database.DBClient, error) {
 		slog.Debug(fmt.Sprintf("found DB %v", config.PostgresDB))
 	}
 
-	// if err := d.InitializeSchema(config.MigrationsPath); err != nil {
-	//	return nil, fmt.Errorf("InitializeSchema failed: %v", err)
-	// }
-	// slog.Debug(fmt.Sprintf("migrated DB using schema path '%v'", config.MigrationsPath))
+	if err := d.InitializeSchema(config.MigrationsPath); err != nil {
+		slog.Warn(fmt.Sprintf("InitializeSchema failed: %v", err))
+	} else {
+		slog.Debug(fmt.Sprintf("migrated DB using schema path '%v'", config.MigrationsPath))
+	}
+
 	return d, nil
 }
 
